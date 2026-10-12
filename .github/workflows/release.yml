@@ -1,0 +1,65 @@
+name: Windows release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      LUMA_TEST_ROOT: ${{ runner.temp }}/luma-release-qa
+      LUMA_SCREENSHOT_DIR: ${{ github.workspace }}/.test-results
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Check release version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'The release tag must match the version in package.json.'
+          }
+          "LUMA_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "LUMA_ARTIFACT=$((Join-Path (Split-Path $PWD -Parent) "Luma-build/Luma-$version-Windows.exe"))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install dependencies
+        run: npm ci
+      - name: Ensure Electron runtime is installed
+        run: node node_modules/electron/install.js
+      - name: Build portable Windows app
+        run: npm run build
+      - name: Test the packaged app
+        shell: pwsh
+        run: |
+          $env:LUMA_TEST_EXEC = Join-Path (Split-Path $PWD -Parent) 'Luma-build/win-unpacked/Luma.exe'
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save Windows EXE
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Luma-${{ env.LUMA_VERSION }}-Windows
+          path: ${{ env.LUMA_ARTIFACT }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" "$env:LUMA_ARTIFACT" --verify-tag --title "Luma $env:LUMA_VERSION" --generate-notes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

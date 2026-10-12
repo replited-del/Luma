@@ -1,0 +1,42 @@
+{
+  "name": "luma-music",
+  "version": "1.2.0",
+  "description": "Локальный музыкальный центр Luma",
+  "author": "Luma",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/smoke.cjs",
+    "build": "electron-builder --win portable --x64 --publish never"
+  },
+  "dependencies": {
+    "music-metadata": "12.1.1"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "playwright": "1.64.0"
+  },
+  "build": {
+    "appId": "local.luma.music",
+    "productName": "Luma",
+    "directories": {
+      "output": "../Luma-build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "ui/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "signExecutable": false,
+      "icon": "ui/icon.png"
+    },
+    "portable": {
+      "artifactName": "Luma-${version}-Windows.exe"
+    }
+  }
+}
