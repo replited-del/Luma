@@ -19,7 +19,6 @@ jobs:
     permissions:
       contents: write
     env:
-      LUMA_TEST_ROOT: ${{ runner.temp }}/luma-release-qa
       LUMA_SCREENSHOT_DIR: ${{ github.workspace }}/.test-results
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,6 +43,8 @@ jobs:
         run: npm run build
       - name: Test the packaged app
         shell: pwsh
+        env:
+          LUMA_TEST_ROOT: ${{ runner.temp }}/luma-release-qa
         run: |
           $env:LUMA_TEST_EXEC = Join-Path (Split-Path $PWD -Parent) 'Luma-build/win-unpacked/Luma.exe'
           npm test
