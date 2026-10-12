@@ -104,7 +104,7 @@ async function launch(){
   await page.waitForTimeout(150);await page.screenshot({path:path.join(screenshotDir,'Luma-visualizer.png')});
   await page.locator('[data-action="modal-close"]').first().click();
   await page.evaluate(()=>saveSettings({volume:.25}));await page.locator('#mute').click();await page.waitForFunction(()=>visualizer.metrics.level===0&&visualizer.metrics.bass===0);await page.locator('#mute').click();
-  await page.locator('#play').click();assert.equal(await page.evaluate(()=>visualizer.frame),0);assert.equal(await page.evaluate(()=>visualizer.metrics.level),0);
+  await page.locator('#play').click();await page.waitForFunction(()=>audio.paused&&visualizer.frame===0&&visualizer.metrics.level===0);
   await page.locator('#play').click();await page.waitForFunction(()=>visualizer.metrics.level>0);
   const treble=tracks.find(t=>t.title==='Slow Morning');
   await page.evaluate(id=>playTrack(id),treble.id);await page.waitForTimeout(1000);
