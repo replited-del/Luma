@@ -1,20 +1,28 @@
-# Изменения Luma
+# Changelog
+
+## 1.2.1
+
+- Preserve fresh volume, compact layout and visualization settings when favorites or other library actions refresh the catalog.
+- Update the expanded Now playing window with the current title, artist, cover art and visualization when switching tracks.
+- Close the expanded player when its current track is removed.
+- Add regression checks for these scenarios in the real app tests.
+- Publish the repository documentation and development roadmap in English.
 
 ## 1.2.0
 
-- Спектр частот и индикаторы громкости и баса, реагирующие на реальный звук после эквалайзера.
-- Визуализация в нижней панели и в окне текущего трека.
-- Переключатель визуализации с сохранением настройки после перезапуска.
-- Обнуление индикаторов на паузе и при выключении звука.
+- Add a frequency spectrum and volume/bass meters driven by real audio after the equalizer.
+- Display visualization in the bottom player and the expanded Now playing window.
+- Add a visualization toggle that persists across restarts.
+- Clear the meters on pause and mute.
 
 ## 1.1.0
 
-- Переключение оформления Windows / macOS.
-- Переключение языка Русский / English без остановки музыки.
-- Увеличенные шрифты и кнопки, быстрые действия, возврат назад и очистка поиска.
+- Add Windows/macOS window style switching.
+- Add live English/Russian language switching without interrupting playback.
+- Increase text and button sizes and add quick actions, back navigation and clear search.
 
 ## 1.0.0
 
-- Локальная музыкальная библиотека с импортом файлов и папок.
-- Теги и обложки, поиск, альбомы, любимые треки и плейлисты.
-- Воспроизведение, очередь, перемотка, громкость и 10-полосный эквалайзер.
+- Introduce a local music library with file and folder import.
+- Add tags and cover art, search, albums, favorites and playlists.
+- Add playback, queue controls, seeking, volume and a 10-band equalizer.

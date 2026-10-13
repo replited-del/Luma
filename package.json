@@ -1,7 +1,7 @@
 {
   "name": "luma-music",
-  "version": "1.2.0",
-  "description": "Локальный музыкальный центр Luma",
+  "version": "1.2.1",
+  "description": "Luma offline music player for Windows",
   "author": "Luma",
   "license": "MIT",
   "main": "main.cjs",

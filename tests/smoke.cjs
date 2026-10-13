@@ -69,6 +69,13 @@ async function launch(){
   assert.equal(fs.readdirSync(path.join(dataDir,'music')).length,3);
   const tracks=imported.library.tracks,first=tracks.find(t=>t.title==='Night Drive');
   assert.ok(first.cover);assert.equal(fs.readdirSync(path.join(dataDir,'covers')).length,1);
+  await page.evaluate(async id=>{saveSettings({volume:.16,compact:true,visualizerEnabled:false});await favorite(id);},first.id);
+  const freshSettings=await page.evaluate(()=>db.settings);
+  assert.equal(freshSettings.volume,.16,'A library refresh must preserve a pending volume change');
+  assert.equal(freshSettings.compact,true);assert.equal(freshSettings.visualizerEnabled,false);
+  await page.waitForFunction(async()=>{const settings=(await window.luma.library()).settings;return settings.volume===.16&&settings.compact&&settings.visualizerEnabled===false;});
+  await page.evaluate(async id=>{saveSettings({volume:.7,compact:false,visualizerEnabled:true});await favorite(id);},first.id);
+  await page.waitForFunction(async()=>(await window.luma.library()).settings.volume===.7);
   const range=await page.evaluate(async id=>{const r=await fetch(`luma-media://track/${id}`,{headers:{Range:'bytes=0-43'}});return{status:r.status,length:(await r.arrayBuffer()).byteLength,range:r.headers.get('content-range')};},first.id);
   assert.equal(range.status,206);assert.equal(range.length,44);
   const forbidden=await page.evaluate(async()=> (await fetch('luma-media://track/unknown')).status);assert.equal(forbidden,404);
@@ -107,7 +114,11 @@ async function launch(){
   await page.locator('#play').click();await page.waitForFunction(()=>audio.paused&&visualizer.frame===0&&visualizer.metrics.level===0);
   await page.locator('#play').click();await page.waitForFunction(()=>visualizer.metrics.level>0);
   const treble=tracks.find(t=>t.title==='Slow Morning');
+  await page.locator('#nowCover').click();
   await page.evaluate(id=>playTrack(id),treble.id);await page.waitForTimeout(1000);
+  assert.equal(await page.locator('.now-playing h2').textContent(),'Slow Morning','Expanded player must follow the current track');
+  assert.ok((await page.locator('.now-playing p').textContent()).startsWith('Luma'));
+  await page.keyboard.press('Escape');
   const trebleState=await page.evaluate(()=>({...visualizer.metrics,maxDb:Math.max(...visualizer.frequency),peak:visualizer.metrics.bands.indexOf(Math.max(...visualizer.metrics.bands))}));
   assert.ok(trebleState.rms>.001);assert.ok(trebleState.bassRms<bassSignal*.1,'Bass meter must distinguish bass from treble');assert.ok(trebleState.peak>17,'Spectrum must follow actual frequency: '+JSON.stringify(trebleState));
   await page.evaluate(id=>playTrack(id,[id]),first.id);await page.evaluate(()=>saveSettings({eqEnabled:true}));
@@ -129,6 +140,9 @@ async function launch(){
   const untranslated=await page.evaluate(()=>{const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const found=[];while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement.closest('script,[data-i18n],[data-playlist],.playlist-hero h1,.track-title,.track-artist,.track-album,#breadcrumb,#nowTitle,#nowArtist,option[value="ru"]'))continue;if(/[\u0400-\u04ff]/.test(node.textContent))found.push(node.textContent.trim());}return found;});assert.deepEqual(untranslated,[]);
   await page.locator('[data-action="modal-close"]').first().click();
   await page.evaluate(()=>window.luma.importDialog(false));assert.equal(await app.evaluate(()=>globalThis.lumaDialogOptions.title),'Add music');
+  await page.evaluate(()=>document.querySelector('#toast').hidden=true);await page.locator('#nowCover').click();
+  assert.equal(await page.locator('#modalRoot .modal-header h2').textContent(),'Now playing');
+  await page.waitForTimeout(250);await page.screenshot({path:path.join(screenshotDir,'Luma-visualizer-en.png')});await page.keyboard.press('Escape');
   await page.locator('#windowsMaximize').click();await page.waitForFunction(()=>document.querySelector('#windowsMaximize').getAttribute('aria-label')==='Restore window');assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isMaximized()),true);
   await page.locator('#windowsMaximize').click();await page.waitForFunction(()=>document.querySelector('#windowsMaximize').getAttribute('aria-label')==='Maximize');
   await page.locator('#play').click();assert.equal(await page.locator('#audio').evaluate(el=>el.paused),true);
@@ -149,8 +163,8 @@ async function launch(){
   page=await launch();const saved=await page.evaluate(()=>window.luma.library());assert.equal(saved.tracks.length,3);assert.equal(saved.playlists[0].tracks.length,1);assert.equal(saved.tracks.find(t=>t.id===first.id).favorite,true);assert.equal(saved.settings.volume,.25);assert.equal(saved.settings.eqEnabled,true);assert.equal(saved.lastTrack,first.id);
   assert.equal(saved.settings.language,'en');assert.equal(saved.settings.interfaceStyle,'windows');assert.equal(await page.locator('.titlebar').isVisible(),true);assert.equal(await page.locator('[data-view="library"] [data-i18n]').textContent(),'All tracks');
   assert.equal(saved.settings.visualizerEnabled,false);assert.equal(await page.locator('#miniVisualizer').isVisible(),false);
-  await page.evaluate(id=>window.luma.removeTrack(id),first.id);const removed=await page.evaluate(()=>window.luma.library());assert.equal(removed.tracks.length,2);assert.equal(removed.playlists[0].tracks.length,0);assert.equal(removed.lastTrack,null);assert.ok(fs.existsSync(path.join(fixtureDir,'Aster - Night Drive.wav')));
+  await page.locator('#nowCover').click();await page.evaluate(async id=>updateLibrary(await window.luma.removeTrack(id)),first.id);assert.equal(await page.locator('.now-playing').count(),0);const removed=await page.evaluate(()=>window.luma.library());assert.equal(removed.tracks.length,2);assert.equal(removed.playlists[0].tracks.length,0);assert.equal(removed.lastTrack,null);assert.ok(fs.existsSync(path.join(fixtureDir,'Aster - Night Drive.wav')));
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({passed:true,checks:['real spectrum and bass analysis','volume and mute affect visualization','pause stops drawing','visualization toggle and restart persistence','legacy settings migration','Windows and macOS controls','live Russian and English localization','preserved user playlist names','native dialog language','maximized and restored controls','persistent language and style','range requests','recursive and drag import','metadata and covers','duplicates','invalid file handling','original preservation','HTML escaping','search and clear','favorites','playlist selection','real audio playback','seek','equalizer','volume','queue','pause','900px layout','restart persistence','track removal'],screenshots:testRoot},null,2));
+  console.log(JSON.stringify({passed:true,checks:['pending preferences survive library refresh','expanded player follows track changes','expanded player closes on track removal','real spectrum and bass analysis','volume and mute affect visualization','pause stops drawing','visualization toggle and restart persistence','legacy settings migration','Windows and macOS controls','live Russian and English localization','preserved user playlist names','native dialog language','maximized and restored controls','persistent language and style','range requests','recursive and drag import','metadata and covers','duplicates','invalid file handling','original preservation','HTML escaping','search and clear','favorites','playlist selection','real audio playback','seek','equalizer','volume','queue','pause','900px layout','restart persistence','track removal'],screenshots:testRoot},null,2));
   await app.close();
 })().catch(async error=>{console.error(error);if(app)await app.close().catch(()=>{});process.exitCode=1;});

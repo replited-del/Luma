@@ -1,82 +1,90 @@
 # Luma
 
-Бесплатный локальный музыкальный центр для Windows с переключением оформления Windows / macOS и языков Русский / English.
+A free, open-source offline music player for Windows. Import your own music, organize playlists and albums, tune the 10-band equalizer, and enjoy a real-time spectrum with volume and bass meters. No account, subscription or ads. Available in English and Russian, with Windows and macOS window styles.
 
-[Скачать для Windows](https://github.com/replited-del/Luma/releases/latest) · [История версий](CHANGELOG.md) · [Сообщить об ошибке](https://github.com/replited-del/Luma/issues)
+[Download for Windows](https://github.com/replited-del/Luma/releases/latest) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Report a bug](https://github.com/replited-del/Luma/issues)
 
-![Интерфейс Luma](docs/images/interface.png)
+![Luma interface](docs/images/interface.png)
 
-Free, open-source offline music player for Windows. Import your own music, organize playlists and albums, tune the 10-band equalizer, and enjoy a real-time spectrum with volume and bass meters. No account, subscription or ads. Available in Russian and English.
+## Getting started
 
-## Как пользоваться
+1. Download the EXE from [GitHub Releases](https://github.com/replited-del/Luma/releases/latest). Close any previous version and run `Luma-1.2.1-Windows.exe`. No Node.js installation is needed to use the player.
+2. Click **Add music** and select files or a folder. You can also drag files and folders into the window.
+3. Open **All tracks** and click a track title or its play button. Clicking the current track title again toggles pause.
+4. Click **+** next to Playlists, name your playlist, and use **Add tracks** to choose its music.
 
-1. Скачайте EXE из [GitHub Releases](https://github.com/replited-del/Luma/releases/latest). Закройте предыдущую версию Luma и запустите `Luma-1.2.0-Windows.exe`. Устанавливать Node.js или другие программы не нужно.
-2. Нажмите **Добавить музыку** и выберите файлы или папку. Можно также перетащить их в окно.
-3. Откройте **Все треки** и нажмите на название трека или кнопку воспроизведения рядом с ним. Одно нажатие запускает музыку, повторное на текущем треке переключает паузу.
-4. Нажмите **+** возле плейлистов, создайте плейлист и добавьте музыку через **Добавить треки**.
+Luma starts in Russian by default. Open the gear button in the top-right corner or **Настройки** in the sidebar, then choose **English** under **Язык интерфейса**.
 
-Работает без аккаунта, интернета, подписки и рекламы. В комплекте нет коммерческой музыки: добавьте свою коллекцию.
+The player works without an account or an internet connection. Music is not included: add your own collection.
 
-## Оформление и язык
+## Features
 
-Нажмите шестерёнку в правом верхнем углу или **Настройки** в боковой панели.
+- File and folder import, including subfolders, with duplicate detection.
+- Track tags and cover art, search, albums, favorites and playlists.
+- Listening history, playback queue, shuffle, repeat and seeking.
+- Volume control and a 10-band equalizer with presets.
+- A real audio spectrum, volume meter and bass meter that can be disabled.
+- Windows and macOS window styles, English and Russian UI, compact library rows and reduced motion.
 
-- **Оформление окна → Windows**: обычные кнопки свернуть, развернуть / восстановить и закрыть справа сверху. Цветные кнопки скрыты. Этот стиль включён по умолчанию.
-- **Оформление окна → macOS**: цветные кнопки слева, более скруглённые элементы и боковая панель с градиентом.
-- **Язык интерфейса → Русский / English**: переводятся разделы, кнопки, настройки, диалоги импорта, меню треков и подсказки. Названия музыки и ваших плейлистов сохраняются.
+Supported containers: MP3, FLAC, WAV, M4A, AAC, OGG, OPUS and WEBM. Playback depends on the codec inside each file; DRM-protected files are not supported. Automated playback tests currently use WAV fixtures.
 
-Изменения применяются сразу, сохраняются после перезапуска и не прерывают музыку. Библиотека из версии 1.0 остаётся доступна.
+## Appearance and language
 
-В версии 1.1 увеличены шрифты и кнопки, добавлены быстрые действия на главной, кнопка назад и очистка поиска. Кнопки воспроизведения, любимых и меню треков постоянно доступны.
+Open **Settings** using the sidebar or the top-right gear button.
 
-Поддерживаемые контейнеры: MP3, FLAC, WAV, M4A, AAC, OGG, OPUS, WEBM. Воспроизведение конкретного файла зависит от его кодека; защищённые DRM-файлы не поддерживаются. Основные проверки воспроизведения выполнены на WAV.
+- **Window style → Windows:** standard minimize, maximize/restore and close buttons on the right. This is the default style.
+- **Window style → macOS:** colored window buttons on the left and rounded interface elements.
+- **Interface language → English / Russian:** translates navigation, buttons, settings, import dialogs, track menus and tooltips. Your track metadata and playlist names stay as you entered them.
 
-Функции: импорт папок с подпапками, чтение тегов и обложек, поиск, альбомы, любимые треки, плейлисты, история прослушивания, очередь, перемешивание, повтор, перемотка, громкость, 10-полосный эквалайзер с пресетами, компактные строки и отключение анимаций.
+Changes apply immediately, survive a restart and do not interrupt playback. Existing libraries from earlier versions remain compatible.
 
-## Визуализация музыки
+## Music visualization
 
-В версии 1.2 добавлен спектр частот и индикаторы громкости и баса в нижней панели и в окне текущего трека (нажмите обложку). Они измеряют реальный аудиосигнал после эквалайзера; бас — диапазон 30–250 Гц. Уровни отображаются по логарифмической шкале, это относительные цифровые уровни, а не громкость в помещении.
+The spectrum and volume/bass meters appear in the bottom player and the expanded **Now playing** window. Click the cover art to open that window. The meters analyze the actual audio after the equalizer; the bass range is 30–250 Hz. Values use a logarithmic scale and represent relative digital signal levels, not room sound pressure.
 
-Отключение: **Настройки → Звук и удобство → Визуализация музыки**. Выбор сохраняется после перезапуска. На паузе индикаторы обнуляются; отключение визуализации не прерывает музыку. При скрытом окне отрисовка приостанавливается, а настройка «Меньше анимаций» снижает частоту обновления.
+Disable them under **Settings → Sound and comfort → Music visualization**. The setting is saved between sessions. Pausing clears the meters, disabling visualization leaves playback running, and drawing stops while the window is hidden. **Reduce motion** lowers the refresh rate.
 
-![Плеер и визуализация](docs/images/visualizer.png)
+![Expanded player and music visualization](docs/images/visualizer.png)
 
-## Где хранится музыка
+## Your music and data
 
-Файлы копируются в `%APPDATA%/luma-music/music`, обложки — в `covers`, библиотека и настройки — в `library.json`. Исходные файлы не изменяются и не удаляются. Повторные файлы определяются по содержимому.
+Imported files are copied to `%APPDATA%/luma-music/music`, covers are stored in `covers`, and the catalog and settings are stored in `library.json`. Original files are never changed or deleted. Duplicate files are identified by their contents.
 
-«Убрать из библиотеки» удаляет запись из библиотеки и плейлистов. Импортированная копия сохраняется в папке приложения; исходник остаётся на месте. Для резервной копии закройте Luma и скопируйте всю папку `%APPDATA%/luma-music`.
+**Remove from library** removes a track from the catalog and playlists. The imported copy remains in the application folder, and the original stays in its original location. To back up your library, close Luma and copy the entire `%APPDATA%/luma-music` folder.
 
-## Клавиши
+## Keyboard shortcuts
 
-| Клавиши | Действие |
+| Shortcut | Action |
 | --- | --- |
-| Пробел | Воспроизведение / пауза |
-| Ctrl K | Поиск |
-| Ctrl O | Импорт |
-| Ctrl → / Ctrl ← | Следующий / предыдущий трек |
-| Enter на строке трека | Воспроизвести |
-| Esc | Закрыть диалог или очередь |
+| Space | Play / pause |
+| Ctrl K | Search |
+| Ctrl O | Import music |
+| Ctrl → / Ctrl ← | Next / previous track |
+| Enter on a track row | Play the track |
+| Esc | Close a dialog or the queue |
 
-## Разработка
+## Development
 
-Нужен Node.js 24 LTS и Windows 10/11 x64.
+Requires Node.js 24 LTS and Windows 10/11 x64.
 
 ```powershell
 npm ci
+node node_modules/electron/install.js
 npm start
 npm test
 npm run build
 ```
 
-Если версия npm не запускает установочные скрипты Electron автоматически, выполните `node node_modules/electron/install.js` после `npm ci`.
+The explicit Electron install step also handles npm versions that do not automatically run its installation script.
 
-`npm test` запускает приложение с отдельной тестовой библиотекой, генерирует короткие аудиофайлы и проверяет импорт, дубликаты, повреждённые файлы, поиск, избранное, плейлисты, воспроизведение, перемотку, эквалайзер, очередь, сохранение настроек и перезапуск. Тестовые файлы находятся в соседней папке `work`.
+`npm test` launches a real Electron instance with an isolated test library, generates short audio fixtures, and checks import, duplicates, invalid files, search, favorites, playlists, playback, seeking, equalizer controls, queue behavior, settings persistence and restart. It also checks visualization and live English/Russian and Windows/macOS switching. Test files are stored in the neighboring `work` folder unless `LUMA_TEST_ROOT` is set.
 
-Стек: Electron, JavaScript, HTML/CSS, Web Audio API, music-metadata. Интерфейс не использует удалённые шрифты, изображения или сетевые сервисы. Доступ renderer к Node.js отключён; файловые операции выполняются в главном процессе через ограниченный preload API.
+Built with Electron, JavaScript, HTML/CSS, the Web Audio API and music-metadata. The UI uses local assets. Node.js access is disabled in the renderer; file operations are handled by the main process through a restricted preload API.
 
-Сборка Windows не подписана цифровым сертификатом.
+GitHub Actions checks changes and pull requests and runs daily. Version tags `vX.Y.Z` trigger a Windows build, packaged app tests and EXE publication in Releases. Dependabot proposes dependency updates. See [CONTRIBUTING.md](CONTRIBUTING.md) for the release process.
 
-Проверки запускаются на каждом изменении, в pull request и ежедневно через GitHub Actions. Workflow выпуска создаёт EXE для тегов `vX.Y.Z`; Dependabot предлагает обновления зависимостей. Подробнее — в [CONTRIBUTING.md](CONTRIBUTING.md).
+Windows builds are not digitally signed.
 
-Лицензия: [MIT](LICENSE).
+## License
+
+[MIT](LICENSE).

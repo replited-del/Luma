@@ -1,20 +1,22 @@
-# Разработка и выпуск
+# Contributing and releasing
 
-Luma — локальный музыкальный плеер для Windows. Сохраняйте работу без аккаунта, подписки и интернета, поддержку Windows / macOS оформления и языков Русский / English. Музыка и названия плейлистов принадлежат пользователю и не должны переводиться или включаться в репозиторий.
+Luma is a local music player for Windows. Preserve playback without an account, subscription or internet connection, both Windows/macOS window styles, and the English/Russian interface. User music and playlist names must never be translated or committed to this repository.
 
-## Проверка изменений
+Keep repository documentation, release notes, code comments and package metadata in English. Russian UI strings and localization test fixtures are intentional and should remain supported.
 
-Установите Node.js 24 и выполните `npm ci`, затем `node node_modules/electron/install.js`. Команда `npm test` запускает настоящий Electron с отдельной тестовой библиотекой и проверяет воспроизведение и интерфейс. В CI временные данные направляются в `LUMA_TEST_ROOT`, а скриншоты — в `LUMA_SCREENSHOT_DIR`.
+## Validate changes
 
-Все изменения проверяются workflow **App checks**. Он также запускается ежедневно в 09:17 по Москве. Dependabot ежедневно предлагает обновления зависимостей; обновления принимаются после проверки совместимости и тестов.
+Install Node.js 24, run `npm ci`, then run `node node_modules/electron/install.js`. `npm test` launches the real Electron app with an isolated library and tests playback and UI behavior. CI stores temporary library data in `LUMA_TEST_ROOT` and screenshots in `LUMA_SCREENSHOT_DIR`.
 
-## Выпуск новой версии
+The **App checks** workflow validates changes and runs daily at 06:17 UTC (09:17 Moscow time). Dependabot proposes dependency updates daily; accept them only after compatibility checks and passing tests.
 
-1. Обновите версию в `package.json` и `package-lock.json`, номер в настройках приложения и `CHANGELOG.md`.
-2. Выполните `npm test` и `npm run build`.
-3. Проверьте собранный `../Luma-build/win-unpacked/Luma.exe`, задав его путь в `LUMA_TEST_EXEC` и повторно запустив `npm test`.
-4. Отправьте изменения в `main`, дождитесь успешных проверок, создайте и отправьте тег `vX.Y.Z`, совпадающий с версией приложения.
+## Release a version
 
-Workflow **Windows release** собирает EXE, проверяет собранное приложение и публикует его в GitHub Releases. Ручной запуск workflow без тега только создаёт скачиваемый артефакт сборки. Сборка не подписана цифровым сертификатом.
+1. Update `package.json`, `package-lock.json`, the version shown in the app settings, and `CHANGELOG.md`.
+2. Run `npm test` and `npm run build`.
+3. Set `LUMA_TEST_EXEC` to the built `../Luma-build/win-unpacked/Luma.exe` and run `npm test` again to validate the packaged app.
+4. Push the changes to `main`, wait for passing checks, then create and push a `vX.Y.Z` tag matching the package version.
 
-Не создавайте новую версию без полезных изменений. Не публикуйте EXE в Git-истории: используйте Releases. Не изменяйте данные реальной музыкальной библиотеки во время проверок.
+The **Windows release** workflow builds the portable EXE, tests the packaged app and publishes it in GitHub Releases. A manual workflow run without a version tag creates a downloadable build artifact only. Windows builds are not digitally signed.
+
+Create releases only for useful changes. Store EXEs in Releases rather than Git history. Never modify a user's real music library during testing or stop a player instance they are using.

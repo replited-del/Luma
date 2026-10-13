@@ -80,7 +80,8 @@ function applySettings() {
 }
 function saveSettings(change) { db.settings = { ...db.settings, ...change }; applySettings(); clearTimeout(settingsTimer); settingsTimer = setTimeout(() => api.settings(db.settings).catch(() => toast(uiText('Не удалось сохранить настройки'))), 180); }
 function setFill(input) { const ratio = (Number(input.value)-Number(input.min))/(Number(input.max)-Number(input.min)); input.style.setProperty('--fill', uiHTML`${ratio*100}%`); }
-function updateLibrary(data) { db = data; queue = queue.filter(id => trackById(id)); if (currentId && !current()) { audio.pause(); audio.removeAttribute('src'); audio.load(); currentId = null; } renderNav(); render(); updatePlayer(); if (!$('#queuePanel').hidden) renderQueue(); }
+// Library actions can finish before a debounced preference write reaches main.
+function updateLibrary(data) { db = { ...data, settings: { ...data.settings, ...db.settings } }; queue = queue.filter(id => trackById(id)); if (currentId && !current()) { audio.pause(); audio.removeAttribute('src'); audio.load(); currentId = null; } renderNav(); render(); updatePlayer(); if (!$('#queuePanel').hidden) renderQueue(); }
 function renderNav() {
   $('#trackCount').textContent = db.tracks.length;
   $('#playlistNav').innerHTML = db.playlists.length ? db.playlists.map(p => uiHTML`<button class="nav-item ${view==='playlist' && viewId===p.id?'active':''}" data-playlist="${p.id}">${icon('queue')}<span>${esc(p.name)}</span></button>`).join('') : uiText('<div class="playlist-placeholder">Соберите музыку<br>под своё настроение</div>');
@@ -190,7 +191,12 @@ function updatePlayer() {
   visualizer.setPlaying(playing);
   if (t && 'mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title:t.title, artist:t.artist, album:t.album });
   $$('.track-row').forEach(row=>row.classList.toggle('current',row.dataset.track===currentId));
-  $('.now-playing')?.classList.toggle('paused',!playing);
+  const expandedPlayer = $('.now-playing');
+  if (expandedPlayer && !t) closeModal();
+  else if (expandedPlayer && expandedPlayer.dataset.currentTrack !== t.id) {
+    expandedPlayer.outerHTML = nowPlayingContent(t);
+    visualizer.refreshTargets();
+  } else expandedPlayer?.classList.toggle('paused',!playing);
 }
 function renderQueue() {
   $('#queuePanel').innerHTML = uiHTML`<div class="modal-header"><h2>Очередь</h2><button class="icon-button" data-action="queue-close" aria-label="Закрыть очередь">${icon('close')}</button></div><p style="font-size:10px">${count(queue.length)}${db.settings.shuffle?uiText(' · В случайном порядке'):''}</p>${queue.length?readList(queue).map(t=>uiHTML`<button class="queue-item ${t.id===currentId?'current':''}" data-queue-play="${t.id}">${art(t,'track-art')}<span class="track-meta"><span class="track-title">${esc(t.title)}</span><span class="track-artist">${esc(artistLabel(t))}</span></span><span class="track-length">${time(t.duration)}</span></button>`).join(''):uiText('<p style="font-size:12px">Включите трек — и очередь появится здесь.</p>')}`;
@@ -233,7 +239,7 @@ function showSettings() {
   <div class="settings-row"><div><b>Компактная библиотека</b><small>Больше треков помещается на экране</small></div><button class="switch ${db.settings.compact?'on':''}" data-setting="compact" role="switch" aria-checked="${Boolean(db.settings.compact)}" aria-label="Компактная библиотека"></button></div>
   <div class="settings-row"><div><b>Меньше анимаций</b><small>Спокойный интерфейс без движения</small></div><button class="switch ${db.settings.reducedMotion?'on':''}" data-setting="reducedMotion" role="switch" aria-checked="${Boolean(db.settings.reducedMotion)}" aria-label="Меньше анимаций"></button></div>
   <div class="settings-row"><div><b>Всё хранится на вашем ПК</b><small>Музыка копируется в библиотеку приложения.<br>Аккаунт и интернет для прослушивания не нужны.</small></div>${icon('folder')}</div>
-  <p class="settings-version">Luma 1.2 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
+  <p class="settings-version">Luma 1.2.1 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
 }
 async function changePreference(name, value, focusId) {
   clearTimeout(settingsTimer);
@@ -244,7 +250,8 @@ async function changePreference(name, value, focusId) {
   showSettings();setTimeout(()=>$('#'+focusId)?.focus(),0);
   try { await api.settings(db.settings); } catch { toast(uiText('Не удалось сохранить настройки')); }
 }
-function showNowPlaying() { const t=current();if(!t){showImport();return;}modal(uiText('Сейчас звучит'),uiHTML`<div class="now-playing ${audio.paused?'paused':''}">${art(t)}<h2>${esc(t.title)}</h2><p>${esc(artistLabel(t))} · ${esc(albumLabel(t))}</p><span class="quality-badge">${t.format}${t.bitrate?uiHTML` · ${t.bitrate} kbps`:''}</span><div class="audio-visualizer large-visualizer" data-visualizer><canvas aria-label="Спектр музыки" role="img"></canvas><div class="visualizer-meters"><label>Громкость<span class="signal-meter" data-meter="level" role="meter" aria-label="Громкость музыки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label><label>Бас<span class="signal-meter bass-meter" data-meter="bass" role="meter" aria-label="Уровень баса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label></div></div></div>`); }
+function nowPlayingContent(t) { return uiHTML`<div class="now-playing ${audio.paused?'paused':''}" data-current-track="${esc(t.id)}">${art(t)}<h2>${esc(t.title)}</h2><p>${esc(artistLabel(t))} · ${esc(albumLabel(t))}</p><span class="quality-badge">${t.format}${t.bitrate?uiHTML` · ${t.bitrate} kbps`:''}</span><div class="audio-visualizer large-visualizer" data-visualizer><canvas aria-label="Спектр музыки" role="img"></canvas><div class="visualizer-meters"><label>Громкость<span class="signal-meter" data-meter="level" role="meter" aria-label="Громкость музыки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label><label>Бас<span class="signal-meter bass-meter" data-meter="bass" role="meter" aria-label="Уровень баса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label></div></div></div>`; }
+function showNowPlaying() { const t=current();if(!t){showImport();return;}modal(uiText('Сейчас звучит'),nowPlayingContent(t)); }
 function closeMenu() { $('.context-menu')?.remove(); }
 function menuFor(id, anchor) {
   closeMenu();const t=trackById(id);if(!t)return;
