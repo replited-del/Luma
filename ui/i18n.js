@@ -57,7 +57,22 @@
     'Быстрые действия':'Quick actions', 'Добавить файлы':'Add files', 'Создать':'Create', 'Вся музыка':'All music', 'На весь экран':'Expand player',
     'Стиль и язык сохраняются автоматически':'Style and language save automatically', 'Назад к музыке':'Back to music', 'Настроить интерфейс':'Customize interface',
     'Русский':'Russian', 'Интерфейс':'Appearance', 'Звук и удобство':'Sound and comfort', 'Горячие клавиши':'Keyboard shortcuts',
-    'выберите':'choose', 'ваша музыка':'your music'
+    'выберите':'choose', 'ваша музыка':'your music',
+    'Плавные переходы':'Crossfade', 'Следующий трек начинается до конца текущего':'Start the next track before the current one ends', 'Выключены':'Off', 'сек.':'s',
+    'Волна трека':'Track waveform', 'Реальная форма звука на полосе перемотки':'Real audio shape on the seek bar', 'Строим волну трека…':'Building track waveform…', 'Волна недоступна — перемотка работает':'Waveform unavailable — seeking still works',
+    'Информация о треке':'Track information', 'Название':'Title', 'Исполнитель':'Artist', 'Жанр':'Genre', 'Год':'Year', 'Номер трека':'Track number',
+    'Выбрать обложку':'Choose cover', 'Убрать обложку':'Remove cover', 'Изображения':'Images', 'Изменения сохраняются в библиотеке Luma. Исходный файл не меняется.':'Changes are saved in the Luma library. The original file stays unchanged.',
+    'Не удалось открыть обложку. Выберите изображение до 10 МБ.':'Could not open the cover. Choose an image under 10 MB.', 'Информация о треке сохранена':'Track information saved', 'Не удалось сохранить данные трека':'Could not save track information',
+    'Резервная копия':'Library backup', 'Папка с музыкой, обложками, плейлистами и настройками. Сохраните её на другом диске.':'A folder with music, covers, playlists and settings. Keep it on another drive.',
+    'Создать копию':'Create backup', 'Восстановить':'Restore', 'Восстановить библиотеку?':'Restore library?',
+    'Выберите папку резервной копии Luma. Она заменит текущую библиотеку. Воспроизведение остановится.':'Choose a Luma backup folder. It will replace the current library and stop playback.',
+    'Перед заменой текущая библиотека сохранится автоматически. Исходные музыкальные файлы останутся на месте.':'Your current library is backed up before replacement. Original music files stay in place.', 'Выбрать копию':'Choose backup',
+    'Восстанавливаем библиотеку…':'Restoring library…', 'Создаём резервную копию…':'Creating library backup…', 'Подготовка…':'Preparing…', 'Это может занять время, если музыки много.':'This may take a while for a large collection.',
+    'Библиотека восстановлена':'Library restored', 'Резервная копия создана':'Library backup created', 'Предыдущая библиотека сохранена здесь:':'Your previous library is saved here:',
+    'Копия включает музыку, обложки, плейлисты и настройки:':'The backup includes music, covers, playlists and settings:', 'Папка резервной копии':'Backup folder', 'Готово файлов:':'Files completed:',
+    'Не удалось восстановить копию. Проверьте целостность папки. Текущая библиотека сохранена.':'Could not restore the backup. Check the folder integrity. Your current library is preserved.',
+    'Не удалось создать копию. Проверьте свободное место и выберите папку вне библиотеки Luma.':'Could not create the backup. Check free disk space and choose a folder outside the Luma library.',
+    'Куда сохранить резервную копию?':'Where should the backup be saved?', 'Выбрать резервную копию Luma':'Choose a Luma backup'
   };
   const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const keys = Object.keys(english).sort((a,b) => b.length-a.length);

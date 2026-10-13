@@ -6,20 +6,22 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { scanFiles, parseRange, sanitizeSettings } = require('./ui/core.cjs');
 const { translate } = require('./ui/i18n.js');
+const { createBackup, restoreBackup } = require('./library-backup.cjs');
 
 if (process.env.LUMA_TEST_DATA) app.setPath('userData', process.env.LUMA_TEST_DATA);
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 protocol.registerSchemesAsPrivileged([{ scheme: 'luma-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
-let win, dataDir, state, importing = false;
+let win, dataDir, state, importing = false, restoring = false, backingUp = false;
 app.on('second-instance', () => { if (win) { if(win.isMinimized())win.restore(); win.show(); win.focus(); } });
-const defaultState = () => ({ tracks: [], playlists: [], settings: { volume: 0.7, shuffle: false, repeat: 'off', eq: [0,0,0,0,0,0,0,0,0,0], eqEnabled: false, compact: false, reducedMotion: false, visualizerEnabled: true, interfaceStyle: 'windows', language: 'ru' }, recent: [], lastTrack: null });
+const defaultState = () => ({ tracks: [], playlists: [], settings: { volume: 0.7, shuffle: false, repeat: 'off', eq: [0,0,0,0,0,0,0,0,0,0], eqEnabled: false, compact: false, reducedMotion: false, visualizerEnabled: true, crossfadeSeconds:0, waveformEnabled:true, interfaceStyle: 'windows', language: 'ru' }, recent: [], lastTrack: null });
+function writable() { if (restoring) throw new Error('Library restoration is in progress'); }
 function persist() {
   fs.writeFileSync(path.join(dataDir, 'library.tmp'), JSON.stringify(state, null, 2));
   fs.renameSync(path.join(dataDir, 'library.tmp'), path.join(dataDir, 'library.json'));
 }
 function publicState() {
-  return { ...state, tracks: state.tracks.map(({ storedFile, coverFile, ...t }) => ({ ...t, src: `luma-media://track/${t.id}`, cover: coverFile ? `luma-media://cover/${t.id}` : null })) };
+  return { ...state, tracks: state.tracks.map(({ storedFile, coverFile, ...t }) => ({ ...t, src: `luma-media://track/${t.id}`, cover: coverFile ? `luma-media://cover/${t.id}?v=${coverFile}` : null })) };
 }
 function notify(channel, value) { if (win && !win.isDestroyed()) win.webContents.send(channel, value); }
 function createWindow() {
@@ -39,6 +41,7 @@ async function digest(file) {
   return hash.digest('hex').slice(0, 32);
 }
 async function importPaths(paths) {
+  writable();
   if (importing) throw new Error('Импорт уже идёт. Дождитесь завершения.');
   importing = true;
   let added = 0, duplicate = 0, failed = 0;
@@ -118,20 +121,82 @@ app.whenReady().then(() => {
     if (!Array.isArray(paths) || paths.length > 10000 || paths.some(p => typeof p !== 'string' || !path.isAbsolute(p))) throw new Error('Некорректный список файлов');
     return importPaths(paths);
   });
-  ipcMain.handle('favorite', (_e, id) => { const t = state.tracks.find(t => t.id === id); if (t) { t.favorite = !t.favorite; persist(); } return publicState(); });
-  ipcMain.handle('playlist-create', (_e, name) => { if (typeof name !== 'string' || !name.trim()) throw new Error('Введите название'); const p = { id: crypto.randomUUID(), name: name.trim().slice(0, 100), tracks: [], createdAt: Date.now() }; state.playlists.push(p); persist(); return publicState(); });
+  ipcMain.handle('favorite', (_e, id) => { writable(); const t = state.tracks.find(t => t.id === id); if (t) { t.favorite = !t.favorite; persist(); } return publicState(); });
+  ipcMain.handle('playlist-create', (_e, name) => { writable(); if (typeof name !== 'string' || !name.trim()) throw new Error('Введите название'); const p = { id: crypto.randomUUID(), name: name.trim().slice(0, 100), tracks: [], createdAt: Date.now() }; state.playlists.push(p); persist(); return publicState(); });
   ipcMain.handle('playlist-update', (_e, id, change) => {
+    writable();
     const p = state.playlists.find(p => p.id === id);
     if (!p) throw new Error('Плейлист не найден');
     if (typeof change.name === 'string' && change.name.trim()) p.name = change.name.trim().slice(0, 100);
     if (Array.isArray(change.tracks)) p.tracks = [...new Set(change.tracks.filter(id => state.tracks.some(t => t.id === id)))];
     persist(); return publicState();
   });
-  ipcMain.handle('playlist-delete', (_e, id) => { state.playlists = state.playlists.filter(p => p.id !== id); persist(); return publicState(); });
-  ipcMain.handle('track-remove', (_e, id) => { state.tracks = state.tracks.filter(t => t.id !== id); state.recent = state.recent.filter(i => i !== id); state.playlists.forEach(p => p.tracks = p.tracks.filter(i => i !== id)); if (state.lastTrack === id) state.lastTrack = null; persist(); return publicState(); });
-  ipcMain.handle('settings', (_e, settings) => { state.settings = { ...state.settings, ...sanitizeSettings(settings) }; persist(); return state.settings; });
-  ipcMain.handle('played', (_e, id) => { if (state.tracks.some(t => t.id === id)) { state.lastTrack = id; state.recent = [id, ...state.recent.filter(i => i !== id)].slice(0, 50); persist(); } });
+  ipcMain.handle('playlist-delete', (_e, id) => { writable(); state.playlists = state.playlists.filter(p => p.id !== id); persist(); return publicState(); });
+  ipcMain.handle('track-remove', (_e, id) => { writable(); state.tracks = state.tracks.filter(t => t.id !== id); state.recent = state.recent.filter(i => i !== id); state.playlists.forEach(p => p.tracks = p.tracks.filter(i => i !== id)); if (state.lastTrack === id) state.lastTrack = null; persist(); return publicState(); });
+  ipcMain.handle('settings', (_e, settings) => { writable(); state.settings = { ...state.settings, ...sanitizeSettings(settings) }; persist(); return state.settings; });
+  ipcMain.handle('played', (_e, id) => { writable(); if (state.tracks.some(t => t.id === id)) { state.lastTrack = id; state.recent = [id, ...state.recent.filter(i => i !== id)].slice(0, 50); persist(); } });
+  ipcMain.handle('track-update', (_e, id, change) => {
+    writable(); const track = state.tracks.find(t => t.id === id);
+    if (!track || !change || typeof change !== 'object') throw new Error('Invalid track');
+    const patch = {};
+    for (const key of ['title','artist','album','genre']) {
+      if (change[key] !== undefined) {
+        if (typeof change[key] !== 'string' || change[key].length > 500 || (key === 'title' && !change[key].trim())) throw new Error('Invalid track text');
+        patch[key] = change[key].trim();
+      }
+    }
+    if (patch.artist === '') patch.artist = 'Неизвестный исполнитель';
+    if (patch.album === '') patch.album = 'Без альбома';
+    for (const key of ['year','trackNumber']) if (change[key] !== undefined) {
+      if (change[key] !== null && (!Number.isInteger(change[key]) || change[key] < 0 || change[key] > 9999)) throw new Error('Invalid track number');
+      patch[key] = change[key] ?? (key === 'year' ? null : 0);
+    }
+    if (change.coverData === null) patch.coverFile = null;
+    else if (change.coverData !== undefined) {
+      if (typeof change.coverData !== 'string' || change.coverData.length > 5 * 1024 * 1024 || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(change.coverData)) throw new Error('Invalid cover');
+      const image = nativeImage.createFromBuffer(Buffer.from(change.coverData.split(',')[1],'base64'));
+      if (image.isEmpty()) throw new Error('Invalid cover');
+      patch.coverFile = id + '-' + crypto.randomUUID() + '.png';
+      fs.writeFileSync(path.join(dataDir,'covers',patch.coverFile),image.resize({width:600}).toPNG());
+    }
+    Object.assign(track,patch); persist(); return publicState();
+  });
+  ipcMain.handle('cover-dialog', async () => {
+    const choice = await dialog.showOpenDialog(win,{title:translate('Выбрать обложку',state.settings.language),properties:['openFile'],filters:[{name:translate('Изображения',state.settings.language),extensions:['png','jpg','jpeg']}]});
+    if (choice.canceled) return null;
+    const stat = await fsp.stat(choice.filePaths[0]); if (stat.size > 10 * 1024 * 1024) throw new Error('Cover is too large');
+    const image = nativeImage.createFromBuffer(await fsp.readFile(choice.filePaths[0])); if (image.isEmpty()) throw new Error('Invalid cover');
+    return image.resize({width:600}).toDataURL();
+  });
+  ipcMain.handle('waveform-read', async (_e, id) => {
+    if (!state.tracks.some(t => t.id === id)) return null;
+    try { const peaks = JSON.parse(await fsp.readFile(path.join(dataDir,'waveforms',id + '.json'),'utf8')); return validPeaks(peaks) ? peaks : null; } catch { return null; }
+  });
+  ipcMain.handle('waveform-save', async (_e, id, peaks) => {
+    if (!state.tracks.some(t => t.id === id) || !validPeaks(peaks)) throw new Error('Invalid waveform');
+    await fsp.mkdir(path.join(dataDir,'waveforms'),{recursive:true}); await fsp.writeFile(path.join(dataDir,'waveforms',id + '.json'),JSON.stringify(peaks));
+  });
+  ipcMain.handle('backup-create', async () => {
+    if (backingUp || restoring || importing) throw new Error('A library operation is already running');
+    backingUp = true;
+    try {
+      const choice = await dialog.showOpenDialog(win,{title:translate('Куда сохранить резервную копию?',state.settings.language),properties:['openDirectory','createDirectory']});
+      if (choice.canceled) return null;
+      return await createBackup(dataDir,choice.filePaths[0],state,p => notify('backup-progress',p));
+    } finally { backingUp = false; notify('backup-progress',null); }
+  });
+  ipcMain.handle('backup-restore', async () => {
+    if (restoring || backingUp || importing) throw new Error('A library operation is already running');
+    restoring = true;
+    try {
+      const choice = await dialog.showOpenDialog(win,{title:translate('Выбрать резервную копию Luma',state.settings.language),properties:['openDirectory']});
+      if (choice.canceled) return null;
+      const result = await restoreBackup(dataDir,choice.filePaths[0],defaultState(),state,p => notify('backup-progress',p));
+      state = result.state; return { library:publicState(), recovery:result.recovery };
+    } finally { restoring = false; notify('backup-progress',null); }
+  });
   ipcMain.on('window', (_e, action) => { if (action === 'close') win.close(); if (action === 'minimize') win.minimize(); if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); });
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());
+function validPeaks(value) { return Array.isArray(value) && value.length === 512 && value.every(n => Number.isFinite(n) && n >= 0 && n <= 1); }

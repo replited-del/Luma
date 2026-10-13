@@ -36,7 +36,7 @@
       <button id="nowCover" class="player-art artwork tone-0" aria-label="Открыть плеер" data-i18n-aria="Открыть плеер"><span data-icon="music"></span></button>
       <div class="player-info"><button id="nowTitle" class="plain-button">Выберите свой первый трек</button><span id="nowArtist">Музыка начинается с вас</span></div>
       <button class="icon-button player-like" id="playerFavorite" aria-label="Добавить в любимые" data-i18n-aria="Добавить в любимые"><span data-icon="heart"></span></button>
-      <div class="transport"><div class="transport-buttons"><button class="icon-button" id="shuffle" aria-label="Перемешать" title="Перемешать"><span data-icon="shuffle"></span></button><button class="icon-button" id="previous" aria-label="Предыдущий трек"><span data-icon="previous"></span></button><button class="play-button" id="play" aria-label="Воспроизвести"><span data-icon="play"></span></button><button class="icon-button" id="next" aria-label="Следующий трек"><span data-icon="next"></span></button><button class="icon-button" id="repeat" aria-label="Повтор" title="Повтор выключен"><span data-icon="repeat"></span></button></div><div class="timeline"><span id="elapsed">0:00</span><input type="range" id="seek" min="0" max="100" step="0.1" value="0" aria-label="Позиция воспроизведения"><span id="duration">0:00</span></div></div>
+      <div class="transport"><div class="transport-buttons"><button class="icon-button" id="shuffle" aria-label="Перемешать" title="Перемешать"><span data-icon="shuffle"></span></button><button class="icon-button" id="previous" aria-label="Предыдущий трек"><span data-icon="previous"></span></button><button class="play-button" id="play" aria-label="Воспроизвести"><span data-icon="play"></span></button><button class="icon-button" id="next" aria-label="Следующий трек"><span data-icon="next"></span></button><button class="icon-button" id="repeat" aria-label="Повтор" title="Повтор выключен"><span data-icon="repeat"></span></button></div><div class="timeline"><span id="elapsed">0:00</span><div id="waveformSeek" class="waveform-seek waveform-enabled"><canvas id="trackWaveform" aria-hidden="true"></canvas><input type="range" id="seek" min="0" max="100" step="0.1" value="0" aria-label="Позиция воспроизведения"></div><span id="duration">0:00</span></div></div>
       <div class="player-right"><span class="quality-badge" id="quality">LOCAL</span><button class="icon-button" id="eqButton" aria-label="Эквалайзер" title="Эквалайзер"><span data-icon="sliders"></span></button><button class="icon-button" id="queueButton" aria-label="Очередь" title="Очередь"><span data-icon="queue"></span></button><button class="icon-button" id="mute" aria-label="Выключить звук"><span data-icon="volume"></span></button><input type="range" id="volume" min="0" max="1" step="0.01" value="0.7" aria-label="Громкость"></div>
     </footer>
   </div>
@@ -45,8 +45,11 @@
   <div id="dropOverlay" class="drop-overlay" hidden><div><span data-icon="download"></span><h2 data-i18n="Отпустите музыку здесь">Отпустите музыку здесь</h2><p data-i18n="Файлы и папки — всё останется на вашем ПК">Файлы и папки — всё останется на вашем ПК</p></div></div>
   <div id="toast" class="toast" role="status" hidden></div>
   <audio id="audio" crossorigin="anonymous" preload="metadata"></audio>
+  <audio id="audioNext" crossorigin="anonymous" preload="auto"></audio>
   <script src="i18n.js"></script>
   <script src="visualizer.js"></script>
+  <script src="playback.js"></script>
+  <script src="waveform.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Luma roadmap
 
-These are proposals for future updates. Version 1.2.1 fixes confirmed bugs; the features below have not been implemented yet.
+These are proposals for future updates. Version 1.3.0 adds crossfades, track waveforms, metadata/cover editing and full library backups; the features below have not been implemented yet.
 
 ## Next: resume listening
 
@@ -16,7 +16,7 @@ Support drag-to-reorder, removal, clear queue and Play next. Identify repeated t
 
 ## Reliability and collection support
 
-- Back up the library catalog and recover from damaged JSON.
+- Recover automatically from a damaged active catalog, beyond the manual backup/restore available in 1.3.0.
 - Test real MP3, FLAC, M4A and OGG files alongside the existing WAV fixtures.
 - Measure search and rendering performance on large collections; render only visible rows if delays are confirmed.
 - Update music-metadata after checking tags and cover art across formats.
