@@ -17,6 +17,7 @@ function applyStaticLanguage() {
   updateWindowControls();
 }
 const paths = {
+  globe: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/>',
   home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
   music: '<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/>',
   album: '<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
@@ -133,10 +134,12 @@ function getVisibleTracks() {
   return tracks;
 }
 function render() {
+  if (view !== 'services' && activeOnlineId) stopOnline();
   $('#clearSearch').hidden = !search;
   $('#backButton').disabled = !search && !navigationHistory.length;
   let title = ({home:uiText('Главная'),library:uiText('Все треки'),albums:uiText('Альбомы'),favorites:uiText('Любимые'),playlist:db.playlists.find(p=>p.id===viewId)?.name || uiText('Плейлист'),album:uiText('Альбом'),recent:uiText('Недавно звучало')})[view];
   $('#breadcrumb').textContent = search?uiText('Поиск'):title;
+  if (view === 'services') { $('#breadcrumb').textContent = uiText('Сервисы'); renderOnline(); return; }
   if (!search && view==='home') { $('#content').innerHTML = home(); $('.hero').insertAdjacentHTML('afterend',quickActions()); return; }
   let tracks = getVisibleTracks();
   if (search) { title = uiHTML`Результаты поиска`; }
@@ -165,6 +168,7 @@ function applyEq() { filters.forEach((f,i)=>f.gain.setTargetAtTime(db.settings.e
 async function playTrack(id, ids, record = true, fadeSeconds = 0) {
   const t = trackById(id); if (!t) return;
   if (restoringUI) return;
+  if (activeOnlineId) stopOnline();
   const request = ++playRequest;
   if (ids?.length) { queue = ids.filter(id=>trackById(id)); if(db.settings.shuffle)queue=shuffled(queue,id); }
   if (!queue.includes(id)) queue.push(id);
@@ -184,6 +188,7 @@ async function playTrack(id, ids, record = true, fadeSeconds = 0) {
 }
 async function togglePlay() {
   if (restoringUI) return;
+  if (activeOnlineId) { $('#serviceFrame')?.focus(); return; }
   if (!current()) { if (db.tracks.length) playTrack(db.tracks[0].id,db.tracks.map(t=>t.id)); else showImport(); return; }
   try { if (audio.paused) { createAudioGraph(); await context.resume(); await audio.play(); prepareNext(); } else { playRequest++; playback.pause(); } } catch { toast(uiText('Не удалось начать воспроизведение')); }
 }
@@ -221,7 +226,7 @@ function updatePlayer() {
   document.body.classList.toggle('playing',playing); document.body.classList.toggle('paused',!playing);
   visualizer.setPlaying(playing);
   waveform.select(t);
-  if (t && 'mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title:t.title, artist:t.artist, album:t.album });
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = activeOnlineId ? null : t ? new MediaMetadata({ title:t.title, artist:t.artist, album:t.album }) : null;
   $$('.track-row').forEach(row=>row.classList.toggle('current',row.dataset.track===currentId));
   const expandedPlayer = $('.now-playing');
   if (expandedPlayer && !t) closeModal();
@@ -242,7 +247,7 @@ function modal(title, body, wide = false) {
   visualizer.refreshTargets();
   setTimeout(()=>($('.modal input[type=text]')||$('.modal button'))?.focus(),0);
 }
-function showImport() { modal(uiText('Новая музыка — новый момент'),uiHTML`<p>Добавьте файлы или целую папку.<br>Оригиналы останутся на своих местах.</p><div class="import-options"><button class="import-option" data-action="import-files">${icon('music')}<b>Выбрать файлы</b><small>Один трек или сразу несколько</small></button><button class="import-option" data-action="import-folder">${icon('folder')}<b>Добавить папку</b><small>Включая все вложенные папки</small></button></div><p class="import-foot">MP3 · FLAC · WAV · M4A · AAC · OGG · OPUS · WEBM<br>Без загрузки в облако. Без подписки. Без рекламы.</p>`); }
+function showImport() { modal(uiText('Новая музыка — новый момент'),uiHTML`<p>Добавьте файлы или целую папку.<br>Оригиналы останутся на своих местах.</p><div class="import-options"><button class="import-option" data-action="import-files">${icon('music')}<b>Выбрать файлы</b><small>Один трек или сразу несколько</small></button><button class="import-option" data-action="import-folder">${icon('folder')}<b>Добавить папку</b><small>Включая все вложенные папки</small></button></div><p class="import-foot">MP3 · FLAC · WAV · M4A · AAC · OGG · OPUS · WEBM<br>Без загрузки в облако. Без подписки. Без рекламы.</p><button class="secondary-button online-import-entry" data-action="online-import">${icon('globe')}Spotify / SoundCloud · Добавить ссылку</button>`); }
 async function doImport(folder, files) {
   closeModal();
   try { const result = files?await api.importDrop(Array.from(files)):await api.importDialog(folder); if(!result) return; updateLibrary(result.library); toast(result.total===0?uiText('В папке не найдено поддерживаемой музыки'):uiHTML`Добавлено: ${result.added}${result.duplicate?uiHTML` · Уже в библиотеке: ${result.duplicate}`:''}${result.failed?uiHTML` · Не прочитано: ${result.failed}`:''}`); }
@@ -277,7 +282,7 @@ function showSettings() {
   <div class="settings-row"><div><b>Меньше анимаций</b><small>Спокойный интерфейс без движения</small></div><button class="switch ${db.settings.reducedMotion?'on':''}" data-setting="reducedMotion" role="switch" aria-checked="${Boolean(db.settings.reducedMotion)}" aria-label="Меньше анимаций"></button></div>
   <div class="settings-row"><div><b>Всё хранится на вашем ПК</b><small>Музыка копируется в библиотеку приложения.<br>Аккаунт и интернет для прослушивания не нужны.</small></div>${icon('folder')}</div>
   <div class="settings-section-title">Резервная копия</div><p class="backup-note">Папка с музыкой, обложками, плейлистами и настройками. Сохраните её на другом диске.</p><div class="backup-actions"><button class="secondary-button" id="createBackup">Создать копию</button><button class="secondary-button" id="restoreBackup">Восстановить</button></div>
-  <p class="settings-version">Luma 1.4.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
+  <p class="settings-version">Luma 1.5.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
   $('#crossfadeSeconds').onchange=e=>{saveSettings({crossfadeSeconds:Number(e.target.value)});prepareNext();};
   $('#createBackup').onclick=()=>performBackup(false);
   $('#restoreBackup').onclick=()=>{
@@ -300,6 +305,7 @@ function showTrackEditor(id) {
   };
 }
 function applyRestoredLibrary(data) {
+  stopOnline();
   playRequest++;playback.reset();audio=playback.active;db=data;queue=[];history=[];fadeAttempt=null;
   $('#elapsed').textContent='0:00';$('#seek').value=0;setFill($('#seek'));waveform.draw(0);
   currentId=data.lastTrack&&trackById(data.lastTrack)?data.lastTrack:null;
@@ -351,6 +357,7 @@ function syncListening() {
   const tick=()=>{listeningFrame=0;if(!$('.now-playing')||!current()||document.hidden)return;listeningLyrics.update(audio.currentTime,audio.duration||current().duration,db.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);if(!audio.paused&&!audio.ended)listeningFrame=requestAnimationFrame(tick);};tick();
 }
 function showNowPlaying() {
+  if (activeOnlineId) { $('#serviceFrame')?.focus(); return; }
   const t=current();if(!t){showImport();return;}
   modal(uiText('Сейчас звучит'),nowPlayingContent(t),true);
   $('.modal').classList.add('listening-modal');$('.modal-backdrop').classList.add('listening-backdrop');syncListening();
@@ -373,6 +380,9 @@ function menuFor(id, anchor) {
 }
 async function favorite(id) { const data=await api.favorite(id); updateLibrary(data); }
 const actions = {
+  'online-import':showOnlineImport,
+  'online-stop':()=>{stopOnline();updatePlayer();if(view==='services')renderOnline();},
+  'online-retry':()=>openOnline(activeOnlineId),
   'listening-play':togglePlay, 'listening-next':()=>nextTrack(), 'listening-previous':previousTrack,
   'listening-favorite':()=>currentId&&favorite(currentId), 'listening-edit':()=>currentId&&showTrackEditor(currentId),
   'lyrics-import':importLyrics, 'lyrics-earlier':()=>shiftLyrics(-.25), 'lyrics-later':()=>shiftLyrics(.25),

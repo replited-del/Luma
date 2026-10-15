@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' luma-media: data:; media-src luma-media:; connect-src 'self' luma-media:; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' luma-media: data:; media-src luma-media:; connect-src 'self' luma-media:; frame-src https://open.spotify.com https://w.soundcloud.com; object-src 'none'; base-uri 'none'">
   <title>Luma</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -19,6 +19,7 @@
         <button class="nav-item" data-view="library"><span data-icon="music"></span><span data-i18n="Все треки">Все треки</span><span class="nav-count" id="trackCount">0</span></button>
         <button class="nav-item" data-view="albums"><span data-icon="album"></span><span data-i18n="Альбомы">Альбомы</span></button>
         <button class="nav-item" data-view="favorites"><span data-icon="heart"></span><span data-i18n="Любимые">Любимые</span></button>
+        <button class="nav-item" data-view="services"><span data-icon="globe"></span><span data-i18n="Сервисы">Сервисы</span></button>
       </nav>
       <div class="playlist-label"><span class="nav-label" data-i18n="ПЛЕЙЛИСТЫ">ПЛЕЙЛИСТЫ</span><button id="newPlaylist" class="icon-button" title="Создать плейлист" aria-label="Создать плейлист" data-i18n-title="Создать плейлист" data-i18n-aria="Создать плейлист"><span data-icon="plus"></span></button></div>
       <div id="playlistNav" class="playlist-nav"></div>
@@ -29,6 +30,7 @@
       <main id="content"></main>
     </div>
     <footer class="player">
+      <div id="onlineTransport" class="online-transport" hidden></div>
       <div id="miniVisualizer" class="audio-visualizer mini-visualizer" data-visualizer>
         <canvas role="img" aria-label="Спектр музыки" data-i18n-aria="Спектр музыки"></canvas>
         <div class="visualizer-meters"><label><span data-i18n="Громкость">Громкость</span><span class="signal-meter" data-meter="level" role="meter" aria-label="Громкость музыки" data-i18n-aria="Громкость музыки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label><label><span data-i18n="Бас">Бас</span><span class="signal-meter bass-meter" data-meter="bass" role="meter" aria-label="Уровень баса" data-i18n-aria="Уровень баса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label></div>
@@ -52,6 +54,8 @@
   <script src="waveform.js"></script>
   <script src="lyrics.js"></script>
   <script src="listening.js"></script>
+  <script src="services.js"></script>
+  <script src="online.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

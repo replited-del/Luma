@@ -8,6 +8,8 @@ Preserve local LRC/TXT lyrics, word/line timing, per-track corrections and the o
 
 Keep repository documentation, release notes, code comments and package metadata in English. Russian UI strings and localization test fixtures are intentional and should remain supported.
 
+Keep optional Spotify/SoundCloud players isolated from local files and privileged IPC. Use official embeds and metadata endpoints, validate links/redirects, and explain preview, connectivity and provider restrictions accurately. Do not download protected audio, scrape credentials, load service players at startup, or claim local EQ/lyrics/visualization support for remote audio. Preserve service links in backups. Service tests must work offline with provider fixtures; verify representative public players manually before release and report material limitations.
+
 ## Validate changes
 
 Install Node.js 24, run `npm ci`, then run `node node_modules/electron/install.js`. `npm test` launches the real Electron app with an isolated library and tests playback and UI behavior. CI stores temporary library data in `LUMA_TEST_ROOT` and screenshots in `LUMA_SCREENSHOT_DIR`.

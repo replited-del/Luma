@@ -1,13 +1,13 @@
 {
   "name": "luma-music",
-  "version": "1.4.0",
-  "description": "Luma offline music player for Windows",
+  "version": "1.5.0",
+  "description": "Luma local music player with optional Spotify and SoundCloud embeds for Windows",
   "author": "Luma",
   "license": "MIT",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node tests/smoke.cjs && node tests/features.cjs && node tests/listening.cjs",
+    "test": "node tests/smoke.cjs && node tests/features.cjs && node tests/listening.cjs && node tests/services.cjs",
     "build": "electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "files": [
       "main.cjs",
       "library-backup.cjs",
+      "service-import.cjs",
       "preload.cjs",
       "ui/**/*",
       "package.json"

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, nativeImage, shell } = require('electron');
 const fs = require('node:fs');
 const fsp = fs.promises;
 const path = require('node:path');
@@ -8,6 +8,8 @@ const { scanFiles, parseRange, sanitizeSettings } = require('./ui/core.cjs');
 const { translate } = require('./ui/i18n.js');
 const { createBackup, restoreBackup } = require('./library-backup.cjs');
 const { MAX_LENGTH: MAX_LYRICS } = require('./ui/lyrics.js');
+const {parse:parseSource,validateSources,MAX_SOURCES} = require('./ui/services.js');
+const {resolveSource,metadata:sourceMetadata} = require('./service-import.cjs');
 
 if (process.env.LUMA_TEST_DATA) app.setPath('userData', process.env.LUMA_TEST_DATA);
 const ownsInstance = app.requestSingleInstanceLock();
@@ -25,6 +27,12 @@ function publicState() {
   return { ...state, tracks: state.tracks.map(({ storedFile, coverFile, ...t }) => ({ ...t, src: `luma-media://track/${t.id}`, cover: coverFile ? `luma-media://cover/${t.id}?v=${coverFile}` : null })) };
 }
 function notify(channel, value) { if (win && !win.isDestroyed()) win.webContents.send(channel, value); }
+function handle(channel, listener) {
+  ipcMain.handle(channel, (event,...args) => {
+    if (!win || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame) throw new Error('Untrusted IPC sender');
+    return listener(event,...args);
+  });
+}
 function createWindow() {
   win = new BrowserWindow({ width: 1380, height: 900, minWidth: 900, minHeight: 650, frame: false, backgroundColor: '#111217', show: false, title: 'Luma', icon: path.join(__dirname, 'ui/icon.png'), autoHideMenuBar: true, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   win.loadFile(path.join(__dirname, 'ui/index.html'));
@@ -94,6 +102,8 @@ app.whenReady().then(() => {
   fs.mkdirSync(path.join(dataDir, 'covers'), { recursive: true });
   try { const stored = JSON.parse(fs.readFileSync(path.join(dataDir, 'library.json'), 'utf8')); const defaults = defaultState(); state = { ...defaults, ...stored, settings: { ...defaults.settings, ...sanitizeSettings(stored.settings) } }; }
   catch { state = defaultState(); }
+  // Invalid online entries must never discard the user's local music catalog.
+  try { state.onlineSources = validateSources(state.onlineSources); } catch { state.onlineSources = []; }
   protocol.handle('luma-media', async request => {
     const url = new URL(request.url), id = url.pathname.slice(1);
     const track = state.tracks.find(t => t.id === id);
@@ -112,19 +122,46 @@ app.whenReady().then(() => {
       return new Response(Readable.toWeb(fs.createReadStream(file, range || undefined)), { status: range ? 206 : 200, headers });
     } catch { return new Response('File unavailable', { status: 404 }); }
   });
-  ipcMain.handle('library', () => publicState());
-  ipcMain.handle('window-state', () => ({ maximized: win.isMaximized() }));
-  ipcMain.handle('import-dialog', async (_e, folder) => {
+  handle('library', () => publicState());
+  handle('window-state', () => ({ maximized: win.isMaximized() }));
+  handle('service-import', async (_event,input) => {
+    writable();
+    const source = await resolveSource(input);
+    let existing = state.onlineSources.find(item => item.url === source.url);
+    if (existing) return {library:publicState(),id:existing.id,duplicate:true};
+    let title = source.fallback, metadataLoaded = false;
+    try { title = await sourceMetadata(source); metadataLoaded = true; } catch { /* Links remain usable when metadata is offline. */ }
+    writable();
+    existing = state.onlineSources.find(item => item.url === source.url);
+    if (existing) return {library:publicState(),id:existing.id,duplicate:true};
+    if (state.onlineSources.length >= MAX_SOURCES) throw new Error('Можно сохранить до 500 ссылок. Удалите ненужные.');
+    const item = {id:crypto.randomUUID(),url:source.url,provider:source.provider,kind:source.kind,title,addedAt:Date.now()};
+    state.onlineSources.unshift(item); persist();
+    return {library:publicState(),id:item.id,metadataLoaded};
+  });
+  handle('service-remove', (_event,id) => { writable(); state.onlineSources = state.onlineSources.filter(item => item.id !== id); persist(); return publicState(); });
+  handle('service-rename', (_event,id,title) => {
+    writable();
+    if (typeof title !== 'string' || !title.trim() || title.length > 300) throw new Error('Введите название');
+    const item = state.onlineSources.find(item => item.id === id);
+    if (item) { item.title = title.trim(); persist(); } return publicState();
+  });
+  handle('service-external', async (_event,id) => {
+    const item = state.onlineSources.find(item => item.id === id), source = parseSource(item?.url);
+    if (!source || source.short) throw new Error('Invalid online source');
+    await shell.openExternal(source.url);
+  });
+  handle('import-dialog', async (_e, folder) => {
     const result = await dialog.showOpenDialog(win, { title: translate(folder ? 'Добавить папку с музыкой' : 'Добавить музыку', state.settings.language), properties: folder ? ['openDirectory'] : ['openFile', 'multiSelections'], filters: [{ name: translate('Музыка', state.settings.language), extensions: ['mp3','flac','wav','m4a','aac','ogg','opus','webm'] }] });
     return result.canceled ? null : importPaths(result.filePaths);
   });
-  ipcMain.handle('import-paths', (_e, paths) => {
+  handle('import-paths', (_e, paths) => {
     if (!Array.isArray(paths) || paths.length > 10000 || paths.some(p => typeof p !== 'string' || !path.isAbsolute(p))) throw new Error('Некорректный список файлов');
     return importPaths(paths);
   });
-  ipcMain.handle('favorite', (_e, id) => { writable(); const t = state.tracks.find(t => t.id === id); if (t) { t.favorite = !t.favorite; persist(); } return publicState(); });
-  ipcMain.handle('playlist-create', (_e, name) => { writable(); if (typeof name !== 'string' || !name.trim()) throw new Error('Введите название'); const p = { id: crypto.randomUUID(), name: name.trim().slice(0, 100), tracks: [], createdAt: Date.now() }; state.playlists.push(p); persist(); return publicState(); });
-  ipcMain.handle('playlist-update', (_e, id, change) => {
+  handle('favorite', (_e, id) => { writable(); const t = state.tracks.find(t => t.id === id); if (t) { t.favorite = !t.favorite; persist(); } return publicState(); });
+  handle('playlist-create', (_e, name) => { writable(); if (typeof name !== 'string' || !name.trim()) throw new Error('Введите название'); const p = { id: crypto.randomUUID(), name: name.trim().slice(0, 100), tracks: [], createdAt: Date.now() }; state.playlists.push(p); persist(); return publicState(); });
+  handle('playlist-update', (_e, id, change) => {
     writable();
     const p = state.playlists.find(p => p.id === id);
     if (!p) throw new Error('Плейлист не найден');
@@ -132,11 +169,11 @@ app.whenReady().then(() => {
     if (Array.isArray(change.tracks)) p.tracks = [...new Set(change.tracks.filter(id => state.tracks.some(t => t.id === id)))];
     persist(); return publicState();
   });
-  ipcMain.handle('playlist-delete', (_e, id) => { writable(); state.playlists = state.playlists.filter(p => p.id !== id); persist(); return publicState(); });
-  ipcMain.handle('track-remove', (_e, id) => { writable(); state.tracks = state.tracks.filter(t => t.id !== id); state.recent = state.recent.filter(i => i !== id); state.playlists.forEach(p => p.tracks = p.tracks.filter(i => i !== id)); if (state.lastTrack === id) state.lastTrack = null; persist(); return publicState(); });
-  ipcMain.handle('settings', (_e, settings) => { writable(); state.settings = { ...state.settings, ...sanitizeSettings(settings) }; persist(); return state.settings; });
-  ipcMain.handle('played', (_e, id) => { writable(); if (state.tracks.some(t => t.id === id)) { state.lastTrack = id; state.recent = [id, ...state.recent.filter(i => i !== id)].slice(0, 50); persist(); } });
-  ipcMain.handle('track-update', (_e, id, change) => {
+  handle('playlist-delete', (_e, id) => { writable(); state.playlists = state.playlists.filter(p => p.id !== id); persist(); return publicState(); });
+  handle('track-remove', (_e, id) => { writable(); state.tracks = state.tracks.filter(t => t.id !== id); state.recent = state.recent.filter(i => i !== id); state.playlists.forEach(p => p.tracks = p.tracks.filter(i => i !== id)); if (state.lastTrack === id) state.lastTrack = null; persist(); return publicState(); });
+  handle('settings', (_e, settings) => { writable(); state.settings = { ...state.settings, ...sanitizeSettings(settings) }; persist(); return state.settings; });
+  handle('played', (_e, id) => { writable(); if (state.tracks.some(t => t.id === id)) { state.lastTrack = id; state.recent = [id, ...state.recent.filter(i => i !== id)].slice(0, 50); persist(); } });
+  handle('track-update', (_e, id, change) => {
     writable(); const track = state.tracks.find(t => t.id === id);
     if (!track || !change || typeof change !== 'object') throw new Error('Invalid track');
     const patch = {};
@@ -171,7 +208,7 @@ app.whenReady().then(() => {
     }
     Object.assign(track,patch); persist(); return publicState();
   });
-  ipcMain.handle('lyrics-import', async (_e,id) => {
+  handle('lyrics-import', async (_e,id) => {
     writable();
     if (!state.tracks.some(t => t.id === id)) throw new Error('Invalid track');
     const choice = await dialog.showOpenDialog(win,{title:translate('Загрузить текст',state.settings.language),properties:['openFile'],filters:[{name:translate('Тексты песен',state.settings.language),extensions:['lrc','txt']}]});
@@ -193,22 +230,22 @@ app.whenReady().then(() => {
     const track = state.tracks.find(t => t.id === id);if (!track) throw new Error('Invalid track');
     track.lyrics = text;track.lyricsOffset=0;persist();return publicState();
   });
-  ipcMain.handle('cover-dialog', async () => {
+  handle('cover-dialog', async () => {
     const choice = await dialog.showOpenDialog(win,{title:translate('Выбрать обложку',state.settings.language),properties:['openFile'],filters:[{name:translate('Изображения',state.settings.language),extensions:['png','jpg','jpeg']}]});
     if (choice.canceled) return null;
     const stat = await fsp.stat(choice.filePaths[0]); if (stat.size > 10 * 1024 * 1024) throw new Error('Cover is too large');
     const image = nativeImage.createFromBuffer(await fsp.readFile(choice.filePaths[0])); if (image.isEmpty()) throw new Error('Invalid cover');
     return image.resize({width:600}).toDataURL();
   });
-  ipcMain.handle('waveform-read', async (_e, id) => {
+  handle('waveform-read', async (_e, id) => {
     if (!state.tracks.some(t => t.id === id)) return null;
     try { const peaks = JSON.parse(await fsp.readFile(path.join(dataDir,'waveforms',id + '.json'),'utf8')); return validPeaks(peaks) ? peaks : null; } catch { return null; }
   });
-  ipcMain.handle('waveform-save', async (_e, id, peaks) => {
+  handle('waveform-save', async (_e, id, peaks) => {
     if (!state.tracks.some(t => t.id === id) || !validPeaks(peaks)) throw new Error('Invalid waveform');
     await fsp.mkdir(path.join(dataDir,'waveforms'),{recursive:true}); await fsp.writeFile(path.join(dataDir,'waveforms',id + '.json'),JSON.stringify(peaks));
   });
-  ipcMain.handle('backup-create', async () => {
+  handle('backup-create', async () => {
     if (backingUp || restoring || importing) throw new Error('A library operation is already running');
     backingUp = true;
     try {
@@ -217,7 +254,7 @@ app.whenReady().then(() => {
       return await createBackup(dataDir,choice.filePaths[0],state,p => notify('backup-progress',p));
     } finally { backingUp = false; notify('backup-progress',null); }
   });
-  ipcMain.handle('backup-restore', async () => {
+  handle('backup-restore', async () => {
     if (restoring || backingUp || importing) throw new Error('A library operation is already running');
     restoring = true;
     try {
@@ -227,7 +264,7 @@ app.whenReady().then(() => {
       state = result.state; return { library:publicState(), recovery:result.recovery };
     } finally { restoring = false; notify('backup-progress',null); }
   });
-  ipcMain.on('window', (_e, action) => { if (action === 'close') win.close(); if (action === 'minimize') win.minimize(); if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); });
+  ipcMain.on('window', (_e, action) => { if (_e.sender !== win.webContents || _e.senderFrame !== win.webContents.mainFrame) return; if (action === 'close') win.close(); if (action === 'minimize') win.minimize(); if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); });
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());

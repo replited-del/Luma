@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { createReadStream } = require('node:fs');
 const { sanitizeSettings } = require('./ui/core.cjs');
 const { MAX_LENGTH: MAX_LYRICS } = require('./ui/lyrics.js');
+const {validateSources} = require('./ui/services.js');
 
 const audioName = /^[a-f0-9]{32}\.(mp3|flac|wav|m4a|aac|ogg|opus|webm)$/;
 const coverName = /^[a-f0-9]{32}(?:-[a-f0-9-]{36})?\.png$/;
@@ -26,7 +27,7 @@ function validateLibrary(value, defaults) {
     playlistIds.add(p.id);
     return { id:p.id, name:p.name, createdAt:Number.isFinite(p.createdAt) ? p.createdAt : Date.now(), tracks:[...new Set(p.tracks.filter(id => ids.has(id)))] };
   });
-  return { tracks, playlists, recent:Array.isArray(value.recent) ? [...new Set(value.recent.filter(id => ids.has(id)))].slice(0,50) : [], lastTrack:ids.has(value.lastTrack) ? value.lastTrack : null, settings:{ ...defaults.settings, ...sanitizeSettings(value.settings) } };
+  return { tracks, playlists, onlineSources:validateSources(value.onlineSources), recent:Array.isArray(value.recent) ? [...new Set(value.recent.filter(id => ids.has(id)))].slice(0,50) : [], lastTrack:ids.has(value.lastTrack) ? value.lastTrack : null, settings:{ ...defaults.settings, ...sanitizeSettings(value.settings) } };
 }
 function requiredFiles(state) { return [...new Set(state.tracks.flatMap(t => ['music/' + t.storedFile, ...(t.coverFile ? ['covers/' + t.coverFile] : [])]))]; }
 function safeEntry(name) { return name === 'library.json' || (name.startsWith('music/') && audioName.test(name.slice(6))) || (name.startsWith('covers/') && coverName.test(name.slice(7))); }

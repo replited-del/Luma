@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0
+
+- Add a Services collection for public Spotify tracks, albums and playlists, and SoundCloud tracks and playlists.
+- Paste full or supported short share links, retrieve titles through official oEmbed endpoints, save custom names and reopen the official player inside Luma.
+- Keep service audio separate from local files: opening a service pauses local audio, and playing local music or leaving Services unloads the embedded player. No service player loads at startup.
+- Detect duplicate links, support search, renaming and confirmed removal, and preserve saved links in full library backups and after restarting.
+- Explain internet, region and provider restrictions in both languages. Spotify may be preview-only in Electron; use Open in service for the provider's app/browser. Audio is not downloaded, and local EQ, lyrics and visualization do not process embedded audio.
+- Isolate remote content in sandboxed frames, validate provider URLs and short-link redirects, bound metadata responses, and restrict IPC to Luma's main frame.
+- Test link validation, offline metadata fallback, local/embedded audio handoff, remote isolation, live language switching, backups, restart and minimum-height navigation with offline provider fixtures.
+
 ## 1.4.0
 
 - Replace the small expanded player with a large listening screen featuring optional cover-derived backgrounds, smooth cover transitions, playback controls and synchronized lyrics.

@@ -1,6 +1,6 @@
 # Luma roadmap
 
-These are proposals for future updates. Version 1.4.0 adds an immersive listening screen, optional cover backgrounds and local synchronized lyrics, alongside the crossfades, waveforms, metadata editor and backups introduced in 1.3.0. The features below have not been implemented yet.
+These are proposals for future updates. Version 1.5.0 adds saved Spotify/SoundCloud links and official embedded players. Version 1.4.0 introduced the immersive listening screen and local synchronized lyrics, alongside the crossfades, waveforms, metadata editor and backups from 1.3.0. The features below have not been implemented yet.
 
 ## Next: resume listening
 
@@ -26,4 +26,4 @@ Support drag-to-reorder, removal, clear queue and Play next. Identify repeated t
 
 Add accent colors and visualization modes while preserving Windows/macOS styles and English/Russian localization. All effects should be optional and respond to real audio.
 
-Each feature should ship with scenario tests, persistence checks, a tested Windows EXE and a changelog entry. Listening must remain free of accounts, subscriptions and a permanent internet connection.
+Each feature should ship with scenario tests, persistence checks, a tested Windows EXE and a changelog entry. Local listening must remain free of accounts, subscriptions and a permanent internet connection; optional services must explain their separate requirements.

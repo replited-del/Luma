@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('luma', {
   library: () => ipcRenderer.invoke('library'),
+  importService: url => ipcRenderer.invoke('service-import',url),
+  removeService: id => ipcRenderer.invoke('service-remove',id),
+  renameService: (id,title) => ipcRenderer.invoke('service-rename',id,title),
+  openService: id => ipcRenderer.invoke('service-external',id),
   importDialog: folder => ipcRenderer.invoke('import-dialog', Boolean(folder)),
   importDrop: files => ipcRenderer.invoke('import-paths', Array.from(files, f => webUtils.getPathForFile(f)).filter(Boolean)),
   favorite: id => ipcRenderer.invoke('favorite', id),
