@@ -1,6 +1,6 @@
 # Luma roadmap
 
-These are proposals for future updates. Version 1.5.0 adds saved Spotify/SoundCloud links and official embedded players. Version 1.4.0 introduced the immersive listening screen and local synchronized lyrics, alongside the crossfades, waveforms, metadata editor and backups from 1.3.0. The features below have not been implemented yet.
+These are proposals for future updates. Version 1.6.0 adds a Spotify button backed by spotDL for matched local downloads, progress, cancellation and source playlists. Version 1.5.0 added saved service links and official embedded players. Version 1.4.0 introduced the immersive listening screen and local synchronized lyrics, alongside the crossfades, waveforms, metadata editor and backups from 1.3.0. The features below have not been implemented yet.
 
 ## Next: resume listening
 
@@ -17,7 +17,8 @@ Support drag-to-reorder, removal, clear queue and Play next. Identify repeated t
 ## Reliability and collection support
 
 - Recover automatically from a damaged active catalog, beyond the manual backup/restore available in 1.3.0.
-- Test real MP3, FLAC, M4A and OGG files alongside the existing WAV fixtures.
+- Expand codec tests to FLAC, M4A and OGG, alongside existing WAV fixtures and generated MP3 download fixtures.
+- Improve provider diagnostics and compatibility when upstream spotDL updates resolve matching or download failures. Never turn a source rejection into a success status or silently substitute unrelated audio.
 - Measure search and rendering performance on large collections; render only visible rows if delays are confirmed.
 - Update music-metadata after checking tags and cover art across formats.
 - Resolve the build dependency audit warning for sprintf-js when a compatible fix is available. The current full audit reports eight moderate entries in the electron-builder dependency chain; the production-only audit reports none. Do not downgrade the build tool automatically to silence the report.

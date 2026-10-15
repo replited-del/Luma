@@ -1,6 +1,11 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('luma', {
   library: () => ipcRenderer.invoke('library'),
+  startSpotify: (url,name) => ipcRenderer.invoke('spotify-start',url,name),
+  spotifyStatus: () => ipcRenderer.invoke('spotify-status'),
+  cancelSpotify: () => ipcRenderer.invoke('spotify-cancel'),
+  openSpotifyFolder: () => ipcRenderer.invoke('spotify-folder'),
+  onSpotifyProgress: fn => { const listener=(_e,value)=>fn(value);ipcRenderer.on('spotify-progress',listener);return ()=>ipcRenderer.removeListener('spotify-progress',listener); },
   importService: url => ipcRenderer.invoke('service-import',url),
   removeService: id => ipcRenderer.invoke('service-remove',id),
   renameService: (id,title) => ipcRenderer.invoke('service-rename',id,title),

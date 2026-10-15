@@ -3,6 +3,21 @@
   // Only UI source strings are translated. Track metadata and playlist names
   // are interpolated separately and never passed through this dictionary.
   const english = {
+    'Spotify — добавить музыку в библиотеку. SoundCloud — открыть плеер сервиса.':'Spotify adds music to your library. SoundCloud opens the service player.',
+    'Кнопка Spotify скачивает найденные записи в библиотеку. Сохранённые ссылки ниже открывают отдельные плееры сервисов: Spotify может играть только превью, а доступность SoundCloud зависит от автора и региона.':'The Spotify button downloads matched recordings to your library. Saved links below open separate service players: Spotify may play previews only, and SoundCloud availability depends on the creator and region.',
+    'Сохранить ссылку':'Save link', 'Добавить в библиотеку':'Add to library', 'Ссылка Spotify':'Spotify link', 'Название плейлиста (необязательно)':'Playlist name (optional)',
+    'Вставьте ссылку на трек, альбом или плейлист. Готовая музыка появится в вашей библиотеке и будет играть без интернета.':'Paste a track, album or playlist link. Downloaded music appears in your library and plays offline.',
+    'Список песен берём из Spotify, аудио — из найденных записей YouTube. Совпадения и доступность зависят от источников. При первой загрузке автоматически подготовятся необходимые компоненты — около 113 МБ.':'The song list comes from Spotify; audio comes from matched YouTube recordings. Matches and availability depend on the sources. Required components are prepared automatically on first use — about 113 MB.',
+    'Вставьте ссылку на трек, альбом или плейлист Spotify.':'Paste a Spotify track, album or playlist link.',
+    'Готовим загрузку…':'Preparing download…', 'Получаем список треков…':'Fetching track list…', 'Скачиваем музыку…':'Downloading music…', 'Добавляем в библиотеку…':'Adding to library…',
+    'Отменяем загрузку…':'Cancelling download…', 'Музыка добавлена':'Music added', 'Скачана часть треков':'Some tracks downloaded', 'Загрузка отменена':'Download cancelled', 'Не удалось скачать музыку':'Could not download music',
+    'Загрузка музыки':'Music download', 'Готово треков:':'Tracks completed:', 'Не скачано:':'Not downloaded:', 'Отменить загрузку':'Cancel download', 'Новая загрузка':'New download',
+    'Открыть папку':'Open folder', 'Подробности загрузки':'Download details', 'Не удалось отменить загрузку':'Could not cancel download', 'Не удалось открыть папку':'Could not open folder',
+    'Загрузка уже идёт. Дождитесь завершения.':'A download is already running. Please wait.', 'Загрузка Spotify поддерживается в Windows x64.':'Spotify downloads are supported on Windows x64.',
+    'Не удалось получить список Spotify. Подробности ниже.':'Could not fetch the Spotify list. See details below.', 'Слишком большой список треков.':'The track list is too large.',
+    'Spotify не вернул доступных треков.':'Spotify returned no available tracks.', 'Не удалось скачать треки. Подробности ниже.':'Could not download tracks. See details below.',
+    'Сервис не ответил вовремя. Попробуйте ещё раз.':'The service did not respond in time. Try again.',
+    'Операция с библиотекой уже идёт.':'A library operation is already running.',
     'Сервисы':'Services', 'Трек':'Track', 'Музыка по ссылке':'Music by link', 'Из сервиса — в ваше пространство.':'From your service to your space.',
     'Сохраните трек, альбом или плейлист и слушайте через официальный плеер.':'Save a track, album or playlist and listen through its official player.',
     'Добавить ссылку':'Add link', 'Добавить из сервиса':'Add from a service', 'Удалить ссылку':'Remove link', 'Удалить ссылку?':'Remove link?',

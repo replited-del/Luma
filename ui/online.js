@@ -17,11 +17,12 @@ function onlineTransport() {
 }
 function renderOnline() {
   visibleTracks = [];
-  if (!$('#onlinePage')) $('#content').innerHTML = '<div id="onlinePage"><div id="onlineHeading" class="page-heading"></div><div id="onlineIntro" class="online-intro"></div><section id="servicePlayer" class="service-player" hidden></section><div id="onlineCards"></div><p id="onlineNote" class="online-note"></p></div>';
+  if (!$('#onlinePage')) $('#content').innerHTML = '<div id="onlinePage"><div id="onlineHeading" class="page-heading"></div><div id="onlineIntro" class="online-intro"></div><div class="spotify-job-slot"></div><section id="servicePlayer" class="service-player" hidden></section><div id="onlineCards"></div><p id="onlineNote" class="online-note"></p></div>';
   // Refresh local copy independently from the frame so language changes keep audio alive.
   $('#onlineHeading').innerHTML = uiHTML`<div><div class="eyebrow">SPOTIFY / SOUNDCLOUD</div><h1>Музыка по ссылке<span style="color:var(--accent)">.</span></h1></div>`;
-  $('#onlineIntro').innerHTML = uiHTML`<div><h2>Из сервиса — в ваше пространство.</h2><p>Сохраните трек, альбом или плейлист и слушайте через официальный плеер.</p></div><button class="primary-button" data-action="online-import">${icon('plus')}Добавить ссылку</button>`;
-  $('#onlineNote').textContent = uiText('Нужен интернет. Spotify в Luma может играть только превью; полные треки доступны в приложении или браузере сервиса. У SoundCloud доступ зависит от автора и региона. Аудиофайлы не скачиваются.');
+  $('#onlineIntro').innerHTML = uiHTML`<div><h2>Из сервиса — в ваше пространство.</h2><p>Spotify — добавить музыку в библиотеку. SoundCloud — открыть плеер сервиса.</p></div><div class="online-source-buttons"><button class="primary-button spotify-button" data-action="spotify-import">${icon('download')}Spotify</button><button class="secondary-button" data-action="online-import">${icon('plus')}Добавить ссылку</button></div>`;
+  $('#onlineNote').textContent = uiText('Кнопка Spotify скачивает найденные записи в библиотеку. Сохранённые ссылки ниже открывают отдельные плееры сервисов: Spotify может играть только превью, а доступность SoundCloud зависит от автора и региона.');
+  renderSpotifyStatus();
   if (activeOnlineId && onlineById(activeOnlineId)) $('.service-player-heading h2').textContent = onlineById(activeOnlineId).title;
   $$('#servicePlayer [data-i18n]').forEach(el => el.textContent = uiText(el.dataset.i18n));
   $$('#servicePlayer [data-i18n-aria]').forEach(el => el.setAttribute('aria-label',uiText(el.dataset.i18nAria)));

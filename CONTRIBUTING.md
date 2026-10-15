@@ -10,6 +10,8 @@ Keep repository documentation, release notes, code comments and package metadata
 
 Keep optional Spotify/SoundCloud players isolated from local files and privileged IPC. Use official embeds and metadata endpoints, validate links/redirects, and explain preview, connectivity and provider restrictions accurately. Do not download protected audio, scrape credentials, load service players at startup, or claim local EQ/lyrics/visualization support for remote audio. Preserve service links in backups. Service tests must work offline with provider fixtures; verify representative public players manually before release and report material limitations.
 
+The Spotify button may use spotDL to match Spotify metadata with publicly available YouTube audio and import the resulting local files. Clearly identify the audio source in the import dialog and documentation; never describe it as exporting Spotify originals. Use pinned upstream tools with verified SHA-256 downloads, a private tool profile, bounded logs, cancellable child processes and strict Spotify URL validation. Never read browser cookies, collect service passwords or bypass access challenges. Keep failed/incomplete files out of the catalog, preserve completed downloads on cancellation, reuse source playlists and preserve downloaded files in library backups. Test this flow offline with generated MP3 tones and separately report live provider checks.
+
 ## Validate changes
 
 Install Node.js 24, run `npm ci`, then run `node node_modules/electron/install.js`. `npm test` launches the real Electron app with an isolated library and tests playback and UI behavior. CI stores temporary library data in `LUMA_TEST_ROOT` and screenshots in `LUMA_SCREENSHOT_DIR`.

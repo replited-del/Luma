@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, nativeImage, shell, net } = require('electron');
 const fs = require('node:fs');
 const fsp = fs.promises;
 const path = require('node:path');
@@ -10,12 +10,13 @@ const { createBackup, restoreBackup } = require('./library-backup.cjs');
 const { MAX_LENGTH: MAX_LYRICS } = require('./ui/lyrics.js');
 const {parse:parseSource,validateSources,MAX_SOURCES} = require('./ui/services.js');
 const {resolveSource,metadata:sourceMetadata} = require('./service-import.cjs');
+const {SpotDL} = require('./spotdl-download.cjs');
 
 if (process.env.LUMA_TEST_DATA) app.setPath('userData', process.env.LUMA_TEST_DATA);
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 protocol.registerSchemesAsPrivileged([{ scheme: 'luma-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
-let win, dataDir, state, importing = false, restoring = false, backingUp = false;
+let win, dataDir, state, spotifyDownloads, importing = false, restoring = false, backingUp = false;
 app.on('second-instance', () => { if (win) { if(win.isMinimized())win.restore(); win.show(); win.focus(); } });
 const defaultState = () => ({ tracks: [], playlists: [], settings: { volume: 0.7, shuffle: false, repeat: 'off', eq: [0,0,0,0,0,0,0,0,0,0], eqEnabled: false, compact: false, reducedMotion: false, visualizerEnabled: true, crossfadeSeconds:0, waveformEnabled:true, ambientBackground:true, interfaceStyle: 'windows', language: 'ru' }, recent: [], lastTrack: null });
 function writable() { if (restoring) throw new Error('Library restoration is in progress'); }
@@ -49,11 +50,12 @@ async function digest(file) {
   for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
   return hash.digest('hex').slice(0, 32);
 }
-async function importPaths(paths) {
+async function importPaths(paths, fromDownload = false) {
   writable();
+  if (spotifyDownloads?.busy && !fromDownload) throw new Error('Загрузка уже идёт. Дождитесь завершения.');
   if (importing) throw new Error('Импорт уже идёт. Дождитесь завершения.');
   importing = true;
-  let added = 0, duplicate = 0, failed = 0;
+  let added = 0, duplicate = 0, failed = 0; const trackIds = [];
   try {
     const files = await scanFiles(paths);
     const { parseFile } = await import('music-metadata');
@@ -63,7 +65,7 @@ async function importPaths(paths) {
       let copied, coverFile;
       try {
         const id = await digest(file);
-        if (state.tracks.some(t => t.id === id)) { duplicate++; continue; }
+        if (state.tracks.some(t => t.id === id)) { duplicate++; trackIds.push(id); continue; }
         const meta = await parseFile(file, { duration: true });
         const common = meta.common, format = meta.format;
         if (!Number.isFinite(format.duration) || format.duration <= 0) throw new Error('Файл не содержит читаемого аудио');
@@ -83,6 +85,7 @@ async function importPaths(paths) {
         const parts = filename.split(' - ');
         state.tracks.push({ id, title: common.title || (parts.length > 1 ? parts.slice(1).join(' - ') : filename), artist: common.artist || (parts.length > 1 ? parts[0] : 'Неизвестный исполнитель'), album: common.album || 'Без альбома', year: common.year || null, genre: common.genre?.[0] || '', trackNumber: common.track?.no || 0, duration: format.duration || 0, bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null, format: ext.slice(1).toUpperCase(), addedAt: Date.now(), favorite: false, storedFile, coverFile: coverFile || null });
         added++;
+        trackIds.push(id);
       } catch {
         failed++;
         if (copied) await fsp.unlink(copied).catch(() => {});
@@ -90,7 +93,7 @@ async function importPaths(paths) {
       }
     }
     persist();
-    const result = { added, duplicate, failed, total: files.length, library: publicState() };
+    const result = { added, duplicate, failed, total: files.length, trackIds, library: publicState() };
     notify('library-changed', result.library);
     return result;
   } finally { importing = false; notify('import-progress', null); }
@@ -104,6 +107,17 @@ app.whenReady().then(() => {
   catch { state = defaultState(); }
   // Invalid online entries must never discard the user's local music catalog.
   try { state.onlineSources = validateSources(state.onlineSources); } catch { state.onlineSources = []; }
+  spotifyDownloads = new SpotDL({dataDir,request:(url,options)=>net.fetch(url,options),notify:value=>notify('spotify-progress',value),importFiles:async(files,job)=>{
+    const result = await importPaths(files,true);
+    if (result.trackIds.length) {
+      const id = 'spotify-' + crypto.createHash('sha256').update(job.url).digest('hex').slice(0,32);
+      let playlist = state.playlists.find(item=>item.id===id);
+      if (!playlist) { playlist={id,name:job.name || 'Spotify',tracks:[],createdAt:Date.now()};state.playlists.push(playlist); }
+      playlist.tracks=[...new Set([...playlist.tracks,...result.trackIds])];persist();result.playlistId=id;
+      notify('library-changed',publicState());
+    }
+    return result;
+  }});
   protocol.handle('luma-media', async request => {
     const url = new URL(request.url), id = url.pathname.slice(1);
     const track = state.tracks.find(t => t.id === id);
@@ -123,6 +137,13 @@ app.whenReady().then(() => {
     } catch { return new Response('File unavailable', { status: 404 }); }
   });
   handle('library', () => publicState());
+  handle('spotify-status',()=>spotifyDownloads.snapshot());
+  handle('spotify-start',(_event,url,name)=>{
+    writable();if (importing || backingUp) throw new Error('Операция с библиотекой уже идёт.');
+    return spotifyDownloads.start(url,name);
+  });
+  handle('spotify-cancel',()=>spotifyDownloads.cancel());
+  handle('spotify-folder',async()=>{ const folder=spotifyDownloads.snapshot()?.folder; if(folder) { const error=await shell.openPath(folder);if(error)throw new Error(error); } });
   handle('window-state', () => ({ maximized: win.isMaximized() }));
   handle('service-import', async (_event,input) => {
     writable();
@@ -246,7 +267,7 @@ app.whenReady().then(() => {
     await fsp.mkdir(path.join(dataDir,'waveforms'),{recursive:true}); await fsp.writeFile(path.join(dataDir,'waveforms',id + '.json'),JSON.stringify(peaks));
   });
   handle('backup-create', async () => {
-    if (backingUp || restoring || importing) throw new Error('A library operation is already running');
+    if (backingUp || restoring || importing || spotifyDownloads.busy) throw new Error('A library operation is already running');
     backingUp = true;
     try {
       const choice = await dialog.showOpenDialog(win,{title:translate('Куда сохранить резервную копию?',state.settings.language),properties:['openDirectory','createDirectory']});
@@ -255,7 +276,7 @@ app.whenReady().then(() => {
     } finally { backingUp = false; notify('backup-progress',null); }
   });
   handle('backup-restore', async () => {
-    if (restoring || backingUp || importing) throw new Error('A library operation is already running');
+    if (restoring || backingUp || importing || spotifyDownloads.busy) throw new Error('A library operation is already running');
     restoring = true;
     try {
       const choice = await dialog.showOpenDialog(win,{title:translate('Выбрать резервную копию Luma',state.settings.language),properties:['openDirectory']});
@@ -268,4 +289,11 @@ app.whenReady().then(() => {
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());
+let quittingDownload = false;
+app.on('before-quit', event => {
+  if (spotifyDownloads?.busy && !quittingDownload) {
+    event.preventDefault();quittingDownload=true;spotifyDownloads.cancel();
+    spotifyDownloads.pending.finally(()=>app.quit());
+  }
+});
 function validPeaks(value) { return Array.isArray(value) && value.length === 512 && value.every(n => Number.isFinite(n) && n >= 0 && n <= 1); }

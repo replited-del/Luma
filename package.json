@@ -1,17 +1,18 @@
 {
   "name": "luma-music",
-  "version": "1.5.0",
-  "description": "Luma local music player with optional Spotify and SoundCloud embeds for Windows",
+  "version": "1.6.0",
+  "description": "Luma local music player with Spotify link downloads and optional service players for Windows",
   "author": "Luma",
   "license": "MIT",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node tests/smoke.cjs && node tests/features.cjs && node tests/listening.cjs && node tests/services.cjs",
+    "test": "node tests/smoke.cjs && node tests/features.cjs && node tests/listening.cjs && node tests/services.cjs && node tests/spotify.cjs",
     "build": "electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
-    "music-metadata": "12.1.1"
+    "music-metadata": "12.1.1",
+    "yauzl": "3.4.0"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -28,6 +29,8 @@
       "main.cjs",
       "library-backup.cjs",
       "service-import.cjs",
+      "spotdl-download.cjs",
+      "THIRD_PARTY.md",
       "preload.cjs",
       "ui/**/*",
       "package.json"

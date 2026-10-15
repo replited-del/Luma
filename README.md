@@ -1,6 +1,6 @@
 # Luma
 
-A free, open-source local music player for Windows, with optional Spotify and SoundCloud players. Import your own files, organize playlists and albums, and enjoy synchronized local lyrics and cover backgrounds. Edit track information, tune the equalizer, use crossfades, waveforms and real audio visualization, and back up your collection locally. Local playback works offline without an account, subscription or ads; optional services have their own requirements. Available in English and Russian, with Windows and macOS window styles.
+A free, open-source local music player for Windows. Import your own files or use a Spotify link to download matched recordings through spotDL, organize playlists and albums, and enjoy synchronized local lyrics and cover backgrounds. Edit track information, tune the equalizer, use crossfades, waveforms and real audio visualization, and back up your collection locally. Local playback works offline without an account, subscription or ads; optional online sources have their own requirements. Available in English and Russian, with Windows and macOS window styles.
 
 [Download for Windows](https://github.com/replited-del/Luma/releases/latest) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Report a bug](https://github.com/replited-del/Luma/issues)
 
@@ -8,7 +8,7 @@ A free, open-source local music player for Windows, with optional Spotify and So
 
 ## Getting started
 
-1. Download the EXE from [GitHub Releases](https://github.com/replited-del/Luma/releases/latest). Close any previous version and run `Luma-1.5.0-Windows.exe`. No Node.js installation is needed to use the player.
+1. Download the EXE from [GitHub Releases](https://github.com/replited-del/Luma/releases/latest). Close any previous version and run `Luma-1.6.0-Windows.exe`. No Node.js installation is needed to use the player.
 2. Click **Add music** and select files or a folder. You can also drag files and folders into the window.
 3. Open **All tracks** and click a track title or its play button. Clicking the current track title again toggles pause.
 4. Click **+** next to Playlists, name your playlist, and use **Add tracks** to choose its music.
@@ -20,6 +20,7 @@ Local playback works without an account or an internet connection. Music is not 
 ## Features
 
 - File and folder import, including subfolders, with duplicate detection.
+- A Spotify button to download matched recordings into the local library and a reusable playlist, with progress, cancellation and partial-result recovery.
 - Saved Spotify/SoundCloud links and official embedded players, with clear provider restrictions.
 - Track tags and cover art, search, albums, favorites and playlists.
 - Listening history, playback queue, shuffle, repeat and seeking.
@@ -35,13 +36,27 @@ Local playback works without an account or an internet connection. Music is not 
 
 Supported containers: MP3, FLAC, WAV, M4A, AAC, OGG, OPUS and WEBM. Playback depends on the codec inside each file; DRM-protected files are not supported. Automated playback tests currently use WAV fixtures.
 
-## Spotify and SoundCloud
+## Spotify downloads
+
+Open **Add music → Spotify**, or **Services → Spotify**. Paste a public Spotify track, album or playlist link, optionally name the resulting playlist, then choose **Add to library**. Supported Spotify short links are resolved automatically.
+
+Spotify supplies the song list and metadata; **spotDL matches and downloads audio from YouTube, not Spotify's original audio files**. Matching, recording versions, quality and availability depend on those sources. Luma does not promise lossless audio, increase the source quality, export protected Spotify downloads, read browser cookies or ask for service passwords.
+
+On the first download, Luma automatically prepares pinned spotDL, FFmpeg and Deno executables (about 113 MiB transferred) with SHA-256 checks. No Python installation or terminal command is required. Subsequent jobs reuse verified components. The tools are kept in `%APPDATA%/luma-music/tools/spotdl-4.5.2`; the optional tool profile is separate from any existing spotDL installation. See [third-party components](THIRD_PARTY.md).
+
+Progress stays available under Services when the import dialog closes or you navigate away. **Cancel download** stops this job's process tree and imports completed output; unfinished files stay out of the catalog. A failed source may leave a partial playlist. **Download details** shows the tool's diagnostic output. Provider errors are failures, even if spotDL returns a zero exit code. **Open folder** opens the job's files, including its MP3 downloads and local diagnostic log.
+
+Imported audio uses the normal Luma player, equalizer, waveform, visualization and crossfades, and is included in full library backups. Repeating the same source reuses its playlist and skips identical local audio. Downloading does not stop local playback; restore and other file imports must wait until the job finishes. Jobs do not automatically resume on restart.
+
+Live validation on October 15, 2026 confirmed tool preparation and Spotify metadata retrieval. The tested YouTube recording returned **HTTP 403 Forbidden**, so an end-to-end public audio download could not be confirmed on that connection. Offline app tests verify importing and playing real generated MP3 files, partial failures, cancellation and backups; they do not guarantee provider availability.
+
+## Saved Spotify and SoundCloud players
 
 Open **Services → Add link**, or **Add music → Spotify / SoundCloud**. Copy a public share link from the service, paste it into Luma, optionally enter a custom title, then choose **Add and open**. Press Play inside the official player. Luma supports Spotify tracks, albums and playlists, SoundCloud tracks and playlists, and `spotify.link` / `on.soundcloud.com` short links. Private links and profile/search URLs are not supported.
 
 Saved cards keep the service link and title, support search, renaming and confirmed removal, and are included in full library backups. Adding a duplicate reopens the existing card. If title lookup fails, a full link can still be saved and renamed; short links need a connection to resolve. No service is contacted at startup. Adding a link contacts its official oEmbed endpoint, and opening a player contacts the provider and its media servers.
 
-**This is online listening through service players, not an offline download or conversion of a service playlist into local audio files.** Spotify in Electron may play only short previews because full playback requires supported encrypted-media capabilities and provider access. **Open in service** opens the saved recording or playlist in the default browser, where account, subscription and region requirements still apply. SoundCloud availability and embedding are controlled by the creator and service. Luma does not bypass restrictions or supply service credentials. See the official [Spotify embed limitations](https://developer.spotify.com/documentation/embeds/tutorials/troubleshooting) and [SoundCloud widget documentation](https://developers.soundcloud.com/docs/api/html5-widget).
+**Saved link cards use online service players and are separate from the Spotify download button.** Spotify embeds in Electron may play only short previews because full playback requires supported encrypted-media capabilities and provider access. **Open in service** opens the saved recording or playlist in the default browser, where account, subscription and region requirements still apply. SoundCloud availability and embedding are controlled by the creator and service. Luma does not bypass restrictions or supply service credentials. See the official [Spotify embed limitations](https://developer.spotify.com/documentation/embeds/tutorials/troubleshooting) and [SoundCloud widget documentation](https://developers.soundcloud.com/docs/api/html5-widget).
 
 Opening a service player pauses local audio. Switching services, choosing a local track, pressing **Stop**, or leaving Services unloads that embedded player. Local audio stays paused until you resume it. Use the service player's own playback and volume controls; Luma's local equalizer, waveform, visualization, crossfade and lyric synchronization do not process the remote audio. Service access and cookies are not included in library backups.
 

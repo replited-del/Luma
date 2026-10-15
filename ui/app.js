@@ -247,7 +247,7 @@ function modal(title, body, wide = false) {
   visualizer.refreshTargets();
   setTimeout(()=>($('.modal input[type=text]')||$('.modal button'))?.focus(),0);
 }
-function showImport() { modal(uiText('Новая музыка — новый момент'),uiHTML`<p>Добавьте файлы или целую папку.<br>Оригиналы останутся на своих местах.</p><div class="import-options"><button class="import-option" data-action="import-files">${icon('music')}<b>Выбрать файлы</b><small>Один трек или сразу несколько</small></button><button class="import-option" data-action="import-folder">${icon('folder')}<b>Добавить папку</b><small>Включая все вложенные папки</small></button></div><p class="import-foot">MP3 · FLAC · WAV · M4A · AAC · OGG · OPUS · WEBM<br>Без загрузки в облако. Без подписки. Без рекламы.</p><button class="secondary-button online-import-entry" data-action="online-import">${icon('globe')}Spotify / SoundCloud · Добавить ссылку</button>`); }
+function showImport() { modal(uiText('Новая музыка — новый момент'),uiHTML`<p>Добавьте файлы или целую папку.<br>Оригиналы останутся на своих местах.</p><div class="import-options"><button class="import-option" data-action="import-files">${icon('music')}<b>Выбрать файлы</b><small>Один трек или сразу несколько</small></button><button class="import-option" data-action="import-folder">${icon('folder')}<b>Добавить папку</b><small>Включая все вложенные папки</small></button></div><p class="import-foot">MP3 · FLAC · WAV · M4A · AAC · OGG · OPUS · WEBM<br>Без загрузки в облако. Без подписки. Без рекламы.</p><button class="primary-button online-import-entry spotify-button" data-action="spotify-import">${icon('download')}Spotify</button><button class="secondary-button online-import-entry" data-action="online-import">${icon('globe')}SoundCloud / Сохранить ссылку</button>`); }
 async function doImport(folder, files) {
   closeModal();
   try { const result = files?await api.importDrop(Array.from(files)):await api.importDialog(folder); if(!result) return; updateLibrary(result.library); toast(result.total===0?uiText('В папке не найдено поддерживаемой музыки'):uiHTML`Добавлено: ${result.added}${result.duplicate?uiHTML` · Уже в библиотеке: ${result.duplicate}`:''}${result.failed?uiHTML` · Не прочитано: ${result.failed}`:''}`); }
@@ -282,7 +282,7 @@ function showSettings() {
   <div class="settings-row"><div><b>Меньше анимаций</b><small>Спокойный интерфейс без движения</small></div><button class="switch ${db.settings.reducedMotion?'on':''}" data-setting="reducedMotion" role="switch" aria-checked="${Boolean(db.settings.reducedMotion)}" aria-label="Меньше анимаций"></button></div>
   <div class="settings-row"><div><b>Всё хранится на вашем ПК</b><small>Музыка копируется в библиотеку приложения.<br>Аккаунт и интернет для прослушивания не нужны.</small></div>${icon('folder')}</div>
   <div class="settings-section-title">Резервная копия</div><p class="backup-note">Папка с музыкой, обложками, плейлистами и настройками. Сохраните её на другом диске.</p><div class="backup-actions"><button class="secondary-button" id="createBackup">Создать копию</button><button class="secondary-button" id="restoreBackup">Восстановить</button></div>
-  <p class="settings-version">Luma 1.5.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
+  <p class="settings-version">Luma 1.6.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
   $('#crossfadeSeconds').onchange=e=>{saveSettings({crossfadeSeconds:Number(e.target.value)});prepareNext();};
   $('#createBackup').onclick=()=>performBackup(false);
   $('#restoreBackup').onclick=()=>{
@@ -380,6 +380,10 @@ function menuFor(id, anchor) {
 }
 async function favorite(id) { const data=await api.favorite(id); updateLibrary(data); }
 const actions = {
+  'spotify-import':()=>showSpotifyImport(),
+  'spotify-cancel':cancelSpotify,
+  'spotify-library':openSpotifyLibrary,
+  'spotify-folder':()=>api.openSpotifyFolder().catch(()=>toast(uiText('Не удалось открыть папку'))),
   'online-import':showOnlineImport,
   'online-stop':()=>{stopOnline();updatePlayer();if(view==='services')renderOnline();},
   'online-retry':()=>openOnline(activeOnlineId),
@@ -469,6 +473,8 @@ document.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('#dropOver
 api.onProgress(p=>{let bar=$('.import-progress');if(!p){bar?.remove();return;}if(!bar){bar=document.createElement('div');bar.className='import-progress';bar.innerHTML='<i></i>';document.body.append(bar);}bar.firstChild.style.width=uiHTML`${p.current/p.total*100}%`;toast(uiHTML`Добавляем ${p.current} из ${p.total}: ${p.name}`,true);});
 api.onBackupProgress(p=>{if(p&&$('#backupStatus'))$('#backupStatus').textContent=uiText('Готово файлов:')+' '+p.current+' / '+p.total;});
 api.onLibrary(updateLibrary);
+api.onSpotifyProgress(spotifyProgress);
+api.spotifyStatus().then(job=>{spotifyJob=job;renderSpotifyStatus();});
 if('mediaSession' in navigator){navigator.mediaSession.setActionHandler('play',()=>{if(audio.paused)togglePlay();});navigator.mediaSession.setActionHandler('pause',()=>{playRequest++;playback.pause();});navigator.mediaSession.setActionHandler('nexttrack',()=>nextTrack());navigator.mediaSession.setActionHandler('previoustrack',previousTrack);}
 hydrateIcons();
 api.onWindowState(value=>{maximized=value.maximized;updateWindowControls();});

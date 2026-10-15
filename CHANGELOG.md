@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0
+
+- Add a **Spotify** button under Add music and Services. Paste a public track, album or playlist link to download matched recordings and import them into the normal local library and a source playlist.
+- Integrate spotDL 4.5.2 with automatically prepared FFmpeg 6.1.1 and Deno 2.9.7. Verify pinned upstream download sizes and SHA-256 checksums; no Python installation, terminal commands or service credentials are required.
+- Explain that Spotify supplies song metadata and YouTube supplies matched audio. Availability and matching depend on the providers; this does not export Spotify original audio or guarantee every track.
+- Show preparation, metadata, download and import progress, detailed errors, cancellation, a downloads folder shortcut and an Open library action. Preserve completed files after a partial failure or cancellation and exclude unfinished output.
+- Detect duplicate audio, reuse the playlist for repeated imports of the same canonical link, and include imported tracks in full backups. Keep local playback available during downloading and prevent library restoration during a job.
+- Test the real child-process lifecycle, MP3 playback, partial failure, cancellation, checksum rejection, duplicate imports, backups, restart and English/Russian UI with offline fixtures.
+- Live validation confirmed automatic tool preparation and Spotify metadata retrieval. The tested public YouTube recordings failed to download; a debug run returned HTTP 403 Forbidden. End-to-end public audio downloading was not confirmed on the test connection.
+
 ## 1.5.0
 
 - Add a Services collection for public Spotify tracks, albums and playlists, and SoundCloud tracks and playlists.
