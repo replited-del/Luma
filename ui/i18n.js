@@ -3,6 +3,12 @@
   // Only UI source strings are translated. Track metadata and playlist names
   // are interpolated separately and never passed through this dictionary.
   const english = {
+    'ВАША МУЗЫКА. ВАШ МОМЕНТ.':'YOUR MUSIC. YOUR MOMENT.', 'Текст песни':'Lyrics', 'Тексты песен':'Song lyrics', 'Загрузить текст':'Import lyrics',
+    'Поймайте каждое слово':'Catch every word', 'Загрузите LRC для синхронизации или TXT для обычного текста. Всё останется на вашем ПК.':'Import LRC for synced lyrics or TXT for plain text. Everything stays on your PC.',
+    'Нажмите на строку, чтобы перемотать':'Click a line to seek', 'За музыкой':'Follow music', 'Текст раньше':'Lyrics earlier', 'Текст позже':'Lyrics later',
+    'Убрать текст песни?':'Remove lyrics?', 'Убрать текст':'Remove lyrics', 'Музыка и исходный файл текста останутся на месте.':'Music and the original lyrics file stay in place.',
+    'Текст песни сохранён':'Lyrics saved', 'Не удалось загрузить текст. Выберите LRC или TXT в UTF-8 до 256 КБ.':'Could not import lyrics. Choose a UTF-8 LRC or TXT file up to 256 KB.',
+    'Фон из обложки':'Cover background', 'Мягкие цвета альбома на экране прослушивания':'Soft album colors on the listening screen',
     'Визуализация музыки':'Music visualization', 'Спектр, громкость и бас во время воспроизведения':'Spectrum, volume and bass during playback',
     'Спектр музыки':'Music spectrum', 'Громкость музыки':'Music volume', 'Уровень баса':'Bass level', 'Бас':'Bass',
     'ВАШЕ ПРОСТРАНСТВО':'YOUR SPACE', 'Главная':'Home', 'Все треки':'All tracks', 'Альбомы':'Albums', 'Любимые':'Favorites',

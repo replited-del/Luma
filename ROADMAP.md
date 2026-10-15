@@ -1,6 +1,6 @@
 # Luma roadmap
 
-These are proposals for future updates. Version 1.3.0 adds crossfades, track waveforms, metadata/cover editing and full library backups; the features below have not been implemented yet.
+These are proposals for future updates. Version 1.4.0 adds an immersive listening screen, optional cover backgrounds and local synchronized lyrics, alongside the crossfades, waveforms, metadata editor and backups introduced in 1.3.0. The features below have not been implemented yet.
 
 ## Next: resume listening
 

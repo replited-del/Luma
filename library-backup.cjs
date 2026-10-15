@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { createReadStream } = require('node:fs');
 const { sanitizeSettings } = require('./ui/core.cjs');
+const { MAX_LENGTH: MAX_LYRICS } = require('./ui/lyrics.js');
 
 const audioName = /^[a-f0-9]{32}\.(mp3|flac|wav|m4a|aac|ogg|opus|webm)$/;
 const coverName = /^[a-f0-9]{32}(?:-[a-f0-9-]{36})?\.png$/;
@@ -16,7 +17,8 @@ function validateLibrary(value, defaults) {
     if (!t || !/^[a-f0-9]{32}$/.test(t.id) || ids.has(t.id) || !audioName.test(t.storedFile) || !t.storedFile.startsWith(t.id + '.') || (t.coverFile && (!coverName.test(t.coverFile) || !t.coverFile.startsWith(t.id)))) throw new Error('Invalid track in backup');
     if (![t.title,t.artist,t.album,t.genre || ''].every(v => typeof v === 'string') || !t.title.trim() || !Number.isFinite(t.duration) || t.duration <= 0) throw new Error('Invalid track metadata');
     ids.add(t.id);
-    return { id:t.id, title:t.title, artist:t.artist, album:t.album, genre:t.genre || '', year:Number.isInteger(t.year) && t.year >= 0 && t.year <= 9999 ? t.year : null, trackNumber:Number.isInteger(t.trackNumber) && t.trackNumber >= 0 ? t.trackNumber : 0, duration:t.duration, bitrate:Number.isFinite(t.bitrate) ? t.bitrate : null, format:path.extname(t.storedFile).slice(1).toUpperCase(), addedAt:Number.isFinite(t.addedAt) ? t.addedAt : Date.now(), favorite:Boolean(t.favorite), storedFile:t.storedFile, coverFile:t.coverFile || null };
+    if (t.lyrics != null && (typeof t.lyrics !== 'string' || t.lyrics.length > MAX_LYRICS || t.lyrics.includes('\u0000'))) throw new Error('Invalid lyrics in backup');
+    return { id:t.id, title:t.title, artist:t.artist, album:t.album, genre:t.genre || '', year:Number.isInteger(t.year) && t.year >= 0 && t.year <= 9999 ? t.year : null, trackNumber:Number.isInteger(t.trackNumber) && t.trackNumber >= 0 ? t.trackNumber : 0, duration:t.duration, bitrate:Number.isFinite(t.bitrate) ? t.bitrate : null, format:path.extname(t.storedFile).slice(1).toUpperCase(), addedAt:Number.isFinite(t.addedAt) ? t.addedAt : Date.now(), favorite:Boolean(t.favorite), storedFile:t.storedFile, coverFile:t.coverFile || null, lyrics:t.lyrics || null, lyricsOffset:Number.isFinite(t.lyricsOffset) ? Math.max(-30,Math.min(30,t.lyricsOffset)) : 0 };
   });
   const playlistIds = new Set();
   const playlists = value.playlists.map(p => {

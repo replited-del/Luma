@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('luma', {
   removeTrack: id => ipcRenderer.invoke('track-remove', id),
   updateTrack: (id, change) => ipcRenderer.invoke('track-update', id, change),
   chooseCover: () => ipcRenderer.invoke('cover-dialog'),
+  importLyrics: id => ipcRenderer.invoke('lyrics-import', id),
   waveform: id => ipcRenderer.invoke('waveform-read', id),
   saveWaveform: (id, peaks) => ipcRenderer.invoke('waveform-save', id, peaks),
   createBackup: () => ipcRenderer.invoke('backup-create'),

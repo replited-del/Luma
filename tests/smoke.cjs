@@ -117,7 +117,7 @@ async function launch(){
   await page.locator('#nowCover').click();
   await page.evaluate(id=>playTrack(id),treble.id);await page.waitForTimeout(1000);
   assert.equal(await page.locator('.now-playing h2').textContent(),'Slow Morning','Expanded player must follow the current track');
-  assert.ok((await page.locator('.now-playing p').textContent()).startsWith('Luma'));
+  assert.ok((await page.locator('.listening-meta p').textContent()).startsWith('Luma'));
   await page.keyboard.press('Escape');
   const trebleState=await page.evaluate(()=>({...visualizer.metrics,maxDb:Math.max(...visualizer.frequency),peak:visualizer.metrics.bands.indexOf(Math.max(...visualizer.metrics.bands))}));
   assert.ok(trebleState.rms>.001);assert.ok(trebleState.bassRms<bassSignal*.1,'Bass meter must distinguish bass from treble');assert.ok(trebleState.peak>17,'Spectrum must follow actual frequency: '+JSON.stringify(trebleState));

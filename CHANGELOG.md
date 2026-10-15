@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- Replace the small expanded player with a large listening screen featuring optional cover-derived backgrounds, smooth cover transitions, playback controls and synchronized lyrics.
+- Import local UTF-8 LRC or TXT files without interrupting playback or modifying original files.
+- Follow timed lines and progressively highlight word/syllable markers in enhanced LRC; support repeated timestamps and LRC offset metadata.
+- Seek by clicking a lyric line, pause following during manual scrolling, and save per-track timing corrections in 0.25-second steps.
+- Keep lyrics and timing corrections in library backups, restoration and restart persistence; confirm lyric removal.
+- Keep native window controls, the bottom seek waveform, English/Russian UI, Windows/macOS styling and reduced motion available.
+- Add real app checks for lyric timing, word progress, input limits, safe text rendering, cover backgrounds, crossfade track changes, small-window layout and backup recovery.
+
 ## 1.3.0
 
 - Add optional automatic crossfades from 1 to 12 seconds through the shared equalizer and analyser; handle pause, seeking, manual skipping and repeat modes.

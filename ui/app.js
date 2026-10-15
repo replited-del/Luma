@@ -62,6 +62,8 @@ const albumLabel = track => track?.album === 'Без альбома' ? uiText('�
 let audio = $('#audio');
 const playback = new CrossfadePlayback([audio,$('#audioNext')]);
 const waveform = new TrackWaveform(api,uiText);
+const listeningLyrics = new ListeningLyrics(uiText);
+let listeningFrame = 0;
 let playRequest = 0, fadeAttempt = null, backupBusy = false, restoringUI = false;
 const visualizer = new AudioVisualizer();
 const trackById = id => db.tracks.find(t => t.id === id);
@@ -77,6 +79,7 @@ function updateWindowControls() {
 }
 function applySettings() {
   document.body.classList.toggle('theme-windows', db.settings.interfaceStyle !== 'macos');
+  document.body.classList.toggle('ambient-off', db.settings.ambientBackground === false);
   applyStaticLanguage();
   visualizer.configure(db.settings.visualizerEnabled !== false, Boolean(db.settings.reducedMotion));
   waveform.configure(db.settings.waveformEnabled !== false);
@@ -226,12 +229,13 @@ function updatePlayer() {
     expandedPlayer.outerHTML = nowPlayingContent(t);
     visualizer.refreshTargets();
   } else expandedPlayer?.classList.toggle('paused',!playing);
+  syncListening();
 }
 function trackRevision(t) { return JSON.stringify([t.id,t.title,t.artist,t.album,t.cover]); }
 function renderQueue() {
   $('#queuePanel').innerHTML = uiHTML`<div class="modal-header"><h2>Очередь</h2><button class="icon-button" data-action="queue-close" aria-label="Закрыть очередь">${icon('close')}</button></div><p style="font-size:10px">${count(queue.length)}${db.settings.shuffle?uiText(' · В случайном порядке'):''}</p>${queue.length?readList(queue).map(t=>uiHTML`<button class="queue-item ${t.id===currentId?'current':''}" data-queue-play="${t.id}">${art(t,'track-art')}<span class="track-meta"><span class="track-title">${esc(t.title)}</span><span class="track-artist">${esc(artistLabel(t))}</span></span><span class="track-length">${time(t.duration)}</span></button>`).join(''):uiText('<p style="font-size:12px">Включите трек — и очередь появится здесь.</p>')}`;
 }
-function closeModal() { if(backupBusy)return; $('#modalRoot').innerHTML = ''; visualizer.refreshTargets(); modalPreviousFocus?.focus(); }
+function closeModal() { if(backupBusy)return; cancelAnimationFrame(listeningFrame);listeningFrame=0;listeningLyrics.select(null,null);$('#modalRoot').innerHTML = ''; visualizer.refreshTargets(); modalPreviousFocus?.focus(); }
 function modal(title, body, wide = false) {
   closeMenu(); modalPreviousFocus = document.activeElement;
   $('#modalRoot').innerHTML = uiHTML`<div class="modal-backdrop"><section class="modal ${wide?'wide':''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-header"><h2>${title}</h2><button class="icon-button" data-action="modal-close" aria-label="Закрыть">${icon('close')}</button></div>${body}</section></div>`;
@@ -264,6 +268,7 @@ function showSettings() {
   <div class="settings-row"><label for="interfaceStyle"><b>Оформление окна</b><small>Обычные кнопки Windows или цветные кнопки macOS</small></label><select id="interfaceStyle" class="settings-select" data-preference="interfaceStyle"><option value="windows" ${db.settings.interfaceStyle!=='macos'?'selected':''}>Windows</option><option value="macos" ${db.settings.interfaceStyle==='macos'?'selected':''}>macOS</option></select></div>
   <div class="settings-row"><label for="languageSelect"><b>Язык интерфейса</b><small>Меняется сразу, без перезапуска</small></label><select id="languageSelect" class="settings-select" data-preference="language"><option value="ru" ${db.settings.language!=='en'?'selected':''}>${'Русский'}</option><option value="en" ${db.settings.language==='en'?'selected':''}>English</option></select></div>
   <div class="settings-hint">${icon('check')}Стиль и язык сохраняются автоматически</div>
+  <div class="settings-row"><div><b>Фон из обложки</b><small>Мягкие цвета альбома на экране прослушивания</small></div><button class="switch ${db.settings.ambientBackground!==false?'on':''}" data-setting="ambientBackground" role="switch" aria-checked="${db.settings.ambientBackground!==false}" aria-label="Фон из обложки"></button></div>
   <div class="settings-section-title">Звук и удобство</div>
   <div class="settings-row"><label for="crossfadeSeconds"><b>Плавные переходы</b><small>Следующий трек начинается до конца текущего</small></label><select id="crossfadeSeconds" class="settings-select"><option value="0" ${!db.settings.crossfadeSeconds?'selected':''}>Выключены</option>${[1,2,3,5,8,12].map(seconds=>uiHTML`<option value="${seconds}" ${db.settings.crossfadeSeconds===seconds?'selected':''}>${seconds} сек.</option>`).join('')}</select></div>
   <div class="settings-row"><div><b>Волна трека</b><small>Реальная форма звука на полосе перемотки</small></div><button class="switch ${db.settings.waveformEnabled!==false?'on':''}" data-setting="waveformEnabled" role="switch" aria-checked="${db.settings.waveformEnabled!==false}" aria-label="Волна трека"></button></div>
@@ -272,7 +277,7 @@ function showSettings() {
   <div class="settings-row"><div><b>Меньше анимаций</b><small>Спокойный интерфейс без движения</small></div><button class="switch ${db.settings.reducedMotion?'on':''}" data-setting="reducedMotion" role="switch" aria-checked="${Boolean(db.settings.reducedMotion)}" aria-label="Меньше анимаций"></button></div>
   <div class="settings-row"><div><b>Всё хранится на вашем ПК</b><small>Музыка копируется в библиотеку приложения.<br>Аккаунт и интернет для прослушивания не нужны.</small></div>${icon('folder')}</div>
   <div class="settings-section-title">Резервная копия</div><p class="backup-note">Папка с музыкой, обложками, плейлистами и настройками. Сохраните её на другом диске.</p><div class="backup-actions"><button class="secondary-button" id="createBackup">Создать копию</button><button class="secondary-button" id="restoreBackup">Восстановить</button></div>
-  <p class="settings-version">Luma 1.3.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
+  <p class="settings-version">Luma 1.4.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
   $('#crossfadeSeconds').onchange=e=>{saveSettings({crossfadeSeconds:Number(e.target.value)});prepareNext();};
   $('#createBackup').onclick=()=>performBackup(false);
   $('#restoreBackup').onclick=()=>{
@@ -330,8 +335,35 @@ async function changePreference(name, value, focusId) {
   showSettings();setTimeout(()=>$('#'+focusId)?.focus(),0);
   try { await api.settings(db.settings); } catch { toast(uiText('Не удалось сохранить настройки')); }
 }
-function nowPlayingContent(t) { return uiHTML`<div class="now-playing ${audio.paused?'paused':''}" data-current-track="${esc(t.id)}" data-track-revision="${esc(trackRevision(t))}">${art(t)}<h2>${esc(t.title)}</h2><p>${esc(artistLabel(t))} · ${esc(albumLabel(t))}</p><span class="quality-badge">${t.format}${t.bitrate?uiHTML` · ${t.bitrate} kbps`:''}</span><div class="audio-visualizer large-visualizer" data-visualizer><canvas aria-label="Спектр музыки" role="img"></canvas><div class="visualizer-meters"><label>Громкость<span class="signal-meter" data-meter="level" role="meter" aria-label="Громкость музыки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label><label>Бас<span class="signal-meter bass-meter" data-meter="bass" role="meter" aria-label="Уровень баса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label></div></div></div>`; }
-function showNowPlaying() { const t=current();if(!t){showImport();return;}modal(uiText('Сейчас звучит'),nowPlayingContent(t)); }
+function nowPlayingContent(t) { return uiHTML`<div class="now-playing ${audio.paused?'paused':''} tone-${tone(t)}" data-current-track="${esc(t.id)}" data-track-revision="${esc(trackRevision(t))}"><div class="listening-ambient" aria-hidden="true">${t.cover?`<img src="${esc(t.cover)}" alt="">`:''}</div><div class="listening-details"><div class="listening-art">${art(t)}</div><div class="listening-meta"><span class="listening-eyebrow">ВАША МУЗЫКА. ВАШ МОМЕНТ.</span><h2>${esc(t.title)}</h2><p>${esc(artistLabel(t))} · ${esc(albumLabel(t))}</p><span class="quality-badge">${esc(t.format)}${t.bitrate?` · ${t.bitrate} kbps`:''}</span></div><div class="listening-controls"><button class="icon-button" data-action="listening-previous" aria-label="Предыдущий трек">${icon('previous')}</button><button class="play-button" data-action="listening-play" aria-label="Воспроизвести">${icon('play')}</button><button class="icon-button" data-action="listening-next" aria-label="Следующий трек">${icon('next')}</button><button class="icon-button" data-action="listening-favorite" aria-label="В любимые">${icon('heart')}</button><button class="icon-button" data-action="listening-edit" aria-label="Информация о треке">${icon('edit')}</button></div><div class="audio-visualizer large-visualizer" data-visualizer><canvas aria-label="Спектр музыки" role="img"></canvas><div class="visualizer-meters"><label>Громкость<span class="signal-meter" data-meter="level" role="meter" aria-label="Громкость музыки" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label><label>Бас<span class="signal-meter bass-meter" data-meter="bass" role="meter" aria-label="Уровень баса" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></label></div></div></div><section class="lyrics-side" aria-label="Текст песни"><div class="lyrics-heading"><span>Текст песни</span><button class="icon-button" data-action="lyrics-import" aria-label="Загрузить текст" title="Загрузить текст">${icon('plus')}</button></div><div id="lyricsLines" class="lyrics-lines" tabindex="0" aria-label="Текст песни"></div><div class="lyrics-tools"><button class="plain-button" data-action="lyrics-follow">За музыкой</button><span class="lyrics-timing"><button class="icon-button" data-action="lyrics-earlier" aria-label="Текст раньше">−</button><output id="lyricsOffset">0.00 s</output><button class="icon-button" data-action="lyrics-later" aria-label="Текст позже">+</button></span><button class="plain-button" data-action="lyrics-remove">Убрать текст</button></div></section></div>`; }
+function syncListening() {
+  cancelAnimationFrame(listeningFrame);listeningFrame=0;
+  const t=current(), panel=$('.now-playing');if(!panel||!t)return;
+  const playing=!audio.paused&&!audio.ended;
+  const play=$('[data-action="listening-play"]',panel);play.innerHTML=icon(playing?'pause':'play');play.setAttribute('aria-label',uiText(playing?'Пауза':'Воспроизвести'));
+  const favorite=$('[data-action="listening-favorite"]',panel);favorite.classList.toggle('active',Boolean(t.favorite));favorite.setAttribute('aria-label',uiText(t.favorite?'Убрать из любимых':'В любимые'));
+  listeningLyrics.select(t,$('#lyricsLines'));
+  const synced=listeningLyrics.parsed?.synced;
+  $('.lyrics-timing').hidden=!synced;
+  $('[data-action="lyrics-follow"]').hidden=!synced;
+  $('[data-action="lyrics-remove"]').hidden=!t.lyrics;
+  $('#lyricsOffset').textContent=(t.lyricsOffset>0?'+':'')+(t.lyricsOffset||0).toFixed(2)+' s';
+  const tick=()=>{listeningFrame=0;if(!$('.now-playing')||!current()||document.hidden)return;listeningLyrics.update(audio.currentTime,audio.duration||current().duration,db.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);if(!audio.paused&&!audio.ended)listeningFrame=requestAnimationFrame(tick);};tick();
+}
+function showNowPlaying() {
+  const t=current();if(!t){showImport();return;}
+  modal(uiText('Сейчас звучит'),nowPlayingContent(t),true);
+  $('.modal').classList.add('listening-modal');$('.modal-backdrop').classList.add('listening-backdrop');syncListening();
+}
+async function importLyrics() {
+  const id=currentId;if(!id)return;
+  try { const data=await api.importLyrics(id);if(data){updateLibrary(data);toast(uiText('Текст песни сохранён'));} }
+  catch { toast(uiText('Не удалось загрузить текст. Выберите LRC или TXT в UTF-8 до 256 КБ.')); }
+}
+async function shiftLyrics(delta) {
+  const t=current();if(!t)return;
+  updateLibrary(await api.updateTrack(t.id,{lyricsOffset:Math.max(-30,Math.min(30,(t.lyricsOffset||0)+delta))}));listeningLyrics.follow();syncListening();
+}
 function closeMenu() { $('.context-menu')?.remove(); }
 function menuFor(id, anchor) {
   closeMenu();const t=trackById(id);if(!t)return;
@@ -341,6 +373,11 @@ function menuFor(id, anchor) {
 }
 async function favorite(id) { const data=await api.favorite(id); updateLibrary(data); }
 const actions = {
+  'listening-play':togglePlay, 'listening-next':()=>nextTrack(), 'listening-previous':previousTrack,
+  'listening-favorite':()=>currentId&&favorite(currentId), 'listening-edit':()=>currentId&&showTrackEditor(currentId),
+  'lyrics-import':importLyrics, 'lyrics-earlier':()=>shiftLyrics(-.25), 'lyrics-later':()=>shiftLyrics(.25),
+  'lyrics-follow':()=>{listeningLyrics.follow();syncListening();},
+  'lyrics-remove':()=>{const t=current();if(!t)return;modal(uiText('Убрать текст песни?'),uiHTML`<p>Музыка и исходный файл текста останутся на месте.</p><div class="modal-actions"><button class="secondary-button" id="keepLyrics">Отмена</button><button class="primary-button" id="removeLyrics">Убрать текст</button></div>`);$('#keepLyrics').onclick=showNowPlaying;$('#removeLyrics').onclick=async()=>{try{updateLibrary(await api.updateTrack(t.id,{lyrics:null}));showNowPlaying();}catch{toast(uiText('Не удалось сохранить изменение. Попробуйте ещё раз.'));}};},
   'create-playlist':()=>playlistModal(),
   'import':showImport, 'import-files':()=>doImport(false), 'import-folder':()=>doImport(true), 'modal-close':closeModal,
   'play-all':()=>{if(db.tracks.length)playTrack(db.tracks[0].id,db.tracks.map(t=>t.id));},
@@ -362,7 +399,7 @@ document.addEventListener('click',async e=>{
     else if(d.view)navigate(d.view);
     else if(d.playlist)navigate('playlist',d.playlist);
     else if(d.album)navigate('album',d.album);
-    else if(d.action)actions[d.action]?.();
+    else if(d.action)await actions[d.action]?.();
     else if(d.play)playTrack(d.play,visibleTracks.length?visibleTracks.map(t=>t.id):db.tracks.map(t=>t.id));
     else if(d.favorite)await favorite(d.favorite);
     else if(d.menu)menuFor(d.menu,button);
@@ -391,13 +428,16 @@ $('#play').onclick=togglePlay;$('#next').onclick=()=>nextTrack();$('#previous').
 $('#shuffle').onclick=()=>{saveSettings({shuffle:!db.settings.shuffle});if(db.settings.shuffle)queue=shuffled(queue,currentId);if(!$('#queuePanel').hidden)renderQueue();};$('#repeat').onclick=()=>saveSettings({repeat:({off:'all',all:'one',one:'off'})[db.settings.repeat]});
 $('#playerFavorite').onclick=()=>currentId&&favorite(currentId);$('#nowCover').onclick=showNowPlaying;$('#nowTitle').onclick=showNowPlaying;
 $('#eqButton').onclick=showEq;$('#queueButton').onclick=()=>{const p=$('#queuePanel');p.hidden=!p.hidden;if(!p.hidden)renderQueue();};
+document.addEventListener('visibilitychange',syncListening);
 $('#volume').oninput=e=>saveSettings({volume:Number(e.target.value)});
 $('#mute').onclick=()=>{if(audio.volume>0){lastVolume=audio.volume;saveSettings({volume:0});}else saveSettings({volume:lastVolume||.7});};
 $('#seek').oninput=e=>{if(Number.isFinite(audio.duration)&&audio.duration>0){playRequest++; playback.cancel(); fadeAttempt=null; audio.currentTime=Number(e.target.value)/100*audio.duration;setFill(e.target);waveform.draw(Number(e.target.value)/100);}};
+document.addEventListener('click',e=>{const row=e.target.closest('[data-lyric-index]');if(!row||restoringUI)return;const line=listeningLyrics.parsed?.lines[Number(row.dataset.lyricIndex)];if(line&&Number.isFinite(audio.duration)){playRequest++;playback.cancel();fadeAttempt=null;audio.currentTime=Math.max(0,Math.min(audio.duration,line.time+(current()?.lyricsOffset||0)));listeningLyrics.follow();syncListening();}});
 for (const deck of playback.decks) {
   deck.addEventListener('timeupdate',()=>{if(deck!==audio)return;const duration=audio.duration;if(Number.isFinite(duration)&&duration>0){$('#seek').value=audio.currentTime/duration*100;setFill($('#seek'));waveform.draw(audio.currentTime/duration);$('#elapsed').textContent=time(audio.currentTime);$('#duration').textContent=time(duration);}checkCrossfade();});
   for (const event of ['play','pause','loadedmetadata']) deck.addEventListener(event,()=>{if(deck!==audio)return;if(event==='pause'){if(playback.pending){playRequest++;playback.cancel();}else playback.stopFade();}updatePlayer();});
-  deck.addEventListener('ended',()=>{if(deck===audio)nextTrack(true);});
+  deck.addEventListener('seeked',()=>{if(deck===audio)syncListening();});
+  deck.addEventListener('ended',()=>{if(deck===audio){nextTrack(true);syncListening();}});
   deck.addEventListener('error',()=>{if(deck!==audio)return;if(currentId)toast(uiText('Этот файл не воспроизводится. Возможно, кодек не поддерживается.'));updatePlayer();});
 }
 document.addEventListener('keydown',e=>{
@@ -406,9 +446,10 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();closeMenu();$('#queuePanel').hidden=true;}
   if(e.ctrlKey&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}
   if(e.ctrlKey&&e.key.toLowerCase()==='o'){e.preventDefault();showImport();}
-  if(e.code==='Space'&&!typing&&!$('.modal')){e.preventDefault();togglePlay();}
+  if(e.code==='Space'&&!typing&&(!$('.modal')||$('.now-playing'))&&!e.target.closest('button')){e.preventDefault();togglePlay();}
+  if(e.ctrlKey&&e.key.toLowerCase()==='l'&&!typing){e.preventDefault();showNowPlaying();}
   if(e.ctrlKey&&e.key==='ArrowRight'){e.preventDefault();nextTrack();}if(e.ctrlKey&&e.key==='ArrowLeft'){e.preventDefault();previousTrack();}
-  if(e.key==='Tab'&&$('.modal')){const focusable=$$('button,input,select,[tabindex]', $('.modal')).filter(el=>!el.disabled);const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
+  if(e.key==='Tab'&&$('.modal')){const focusable=$$('button,input,select,[tabindex]', $('.modal')).filter(el=>!el.disabled&&el.getClientRects().length&&el.tabIndex>=0);const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
 });
 let dragDepth=0;
 document.addEventListener('dragenter',e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();dragDepth++;$('#dropOverlay').hidden=false;}});

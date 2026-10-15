@@ -4,6 +4,8 @@ Luma is a local music player for Windows. Preserve playback without an account, 
 
 Preserve optional crossfades, real track waveforms, metadata and cover editing, and full library backup/recovery. Audio files must not be rewritten by the metadata editor. Restore tests must cover corrupt input and rollback after a failed replacement.
 
+Preserve local LRC/TXT lyrics, word/line timing, per-track corrections and the optional cover background. Lyrics belong to the local catalog and its backups; do not send the user's music or lyrics to external services. Test track changes, paused seeking, small windows and reduced motion when changing the listening screen.
+
 Keep repository documentation, release notes, code comments and package metadata in English. Russian UI strings and localization test fixtures are intentional and should remain supported.
 
 ## Validate changes

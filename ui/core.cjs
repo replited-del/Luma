@@ -25,7 +25,7 @@ function sanitizeSettings(value) {
   const result = {};
   if (!value || typeof value !== 'object') return result;
   if (Number.isFinite(value.volume)) result.volume = Math.min(1, Math.max(0, value.volume));
-  for (const name of ['shuffle','eqEnabled','compact','reducedMotion','visualizerEnabled','waveformEnabled']) if (typeof value[name] === 'boolean') result[name] = value[name];
+  for (const name of ['shuffle','eqEnabled','compact','reducedMotion','visualizerEnabled','waveformEnabled','ambientBackground']) if (typeof value[name] === 'boolean') result[name] = value[name];
   if (Number.isFinite(value.crossfadeSeconds)) result.crossfadeSeconds = Math.min(12,Math.max(0,value.crossfadeSeconds));
   if (['off','all','one'].includes(value.repeat)) result.repeat = value.repeat;
   if (['windows','macos'].includes(value.interfaceStyle)) result.interfaceStyle = value.interfaceStyle;

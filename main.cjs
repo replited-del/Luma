@@ -7,6 +7,7 @@ const { Readable } = require('node:stream');
 const { scanFiles, parseRange, sanitizeSettings } = require('./ui/core.cjs');
 const { translate } = require('./ui/i18n.js');
 const { createBackup, restoreBackup } = require('./library-backup.cjs');
+const { MAX_LENGTH: MAX_LYRICS } = require('./ui/lyrics.js');
 
 if (process.env.LUMA_TEST_DATA) app.setPath('userData', process.env.LUMA_TEST_DATA);
 const ownsInstance = app.requestSingleInstanceLock();
@@ -14,7 +15,7 @@ if (!ownsInstance) app.quit();
 protocol.registerSchemesAsPrivileged([{ scheme: 'luma-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 let win, dataDir, state, importing = false, restoring = false, backingUp = false;
 app.on('second-instance', () => { if (win) { if(win.isMinimized())win.restore(); win.show(); win.focus(); } });
-const defaultState = () => ({ tracks: [], playlists: [], settings: { volume: 0.7, shuffle: false, repeat: 'off', eq: [0,0,0,0,0,0,0,0,0,0], eqEnabled: false, compact: false, reducedMotion: false, visualizerEnabled: true, crossfadeSeconds:0, waveformEnabled:true, interfaceStyle: 'windows', language: 'ru' }, recent: [], lastTrack: null });
+const defaultState = () => ({ tracks: [], playlists: [], settings: { volume: 0.7, shuffle: false, repeat: 'off', eq: [0,0,0,0,0,0,0,0,0,0], eqEnabled: false, compact: false, reducedMotion: false, visualizerEnabled: true, crossfadeSeconds:0, waveformEnabled:true, ambientBackground:true, interfaceStyle: 'windows', language: 'ru' }, recent: [], lastTrack: null });
 function writable() { if (restoring) throw new Error('Library restoration is in progress'); }
 function persist() {
   fs.writeFileSync(path.join(dataDir, 'library.tmp'), JSON.stringify(state, null, 2));
@@ -139,6 +140,15 @@ app.whenReady().then(() => {
     writable(); const track = state.tracks.find(t => t.id === id);
     if (!track || !change || typeof change !== 'object') throw new Error('Invalid track');
     const patch = {};
+    if (change.lyrics !== undefined) {
+      if (change.lyrics !== null && (typeof change.lyrics !== 'string' || change.lyrics.length > MAX_LYRICS || change.lyrics.includes('\u0000'))) throw new Error('Invalid lyrics');
+      patch.lyrics = change.lyrics || null;
+      patch.lyricsOffset = 0;
+    }
+    if (change.lyricsOffset !== undefined) {
+      if (!Number.isFinite(change.lyricsOffset) || Math.abs(change.lyricsOffset) > 30) throw new Error('Invalid lyrics offset');
+      patch.lyricsOffset = change.lyricsOffset;
+    }
     for (const key of ['title','artist','album','genre']) {
       if (change[key] !== undefined) {
         if (typeof change[key] !== 'string' || change[key].length > 500 || (key === 'title' && !change[key].trim())) throw new Error('Invalid track text');
@@ -160,6 +170,28 @@ app.whenReady().then(() => {
       fs.writeFileSync(path.join(dataDir,'covers',patch.coverFile),image.resize({width:600}).toPNG());
     }
     Object.assign(track,patch); persist(); return publicState();
+  });
+  ipcMain.handle('lyrics-import', async (_e,id) => {
+    writable();
+    if (!state.tracks.some(t => t.id === id)) throw new Error('Invalid track');
+    const choice = await dialog.showOpenDialog(win,{title:translate('Загрузить текст',state.settings.language),properties:['openFile'],filters:[{name:translate('Тексты песен',state.settings.language),extensions:['lrc','txt']}]});
+    if (choice.canceled) return null;
+    const file = choice.filePaths[0];
+    if (!['.lrc','.txt'].includes(path.extname(file).toLowerCase())) throw new Error('Invalid lyrics file');
+    const handle = await fsp.open(file,'r');
+    let text;
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.size > MAX_LYRICS) throw new Error('Lyrics file is too large');
+      const bytes = Buffer.alloc(MAX_LYRICS + 1);
+      const {bytesRead} = await handle.read(bytes,0,bytes.length,0);
+      if (bytesRead > MAX_LYRICS) throw new Error('Lyrics file is too large');
+      text = new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(0,bytesRead)).replace(/^\uFEFF/,'');
+      if (!text.trim() || text.includes('\u0000')) throw new Error('Invalid lyrics file');
+    } finally { await handle.close(); }
+    writable();
+    const track = state.tracks.find(t => t.id === id);if (!track) throw new Error('Invalid track');
+    track.lyrics = text;track.lyricsOffset=0;persist();return publicState();
   });
   ipcMain.handle('cover-dialog', async () => {
     const choice = await dialog.showOpenDialog(win,{title:translate('Выбрать обложку',state.settings.language),properties:['openFile'],filters:[{name:translate('Изображения',state.settings.language),extensions:['png','jpg','jpeg']}]});
