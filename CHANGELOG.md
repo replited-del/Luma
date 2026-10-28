@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.1
+
+- Update music metadata parsing to 12.2.3, which bounds file-type detection allocations and includes audio metadata parsing fixes.
+- Update Electron to 44.10.0 to address a high-severity certificate validation advisory; update electron-builder to 26.18.0 and Playwright to 1.64.1.
+- Refresh the vulnerable transitive undici package; `npm audit` reports no remaining vulnerabilities.
+
 ## 1.6.0
 
 - Add a **Spotify** button under Add music and Services. Paste a public track, album or playlist link to download matched recordings and import them into the normal local library and a source playlist.

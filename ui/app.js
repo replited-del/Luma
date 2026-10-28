@@ -282,7 +282,7 @@ function showSettings() {
   <div class="settings-row"><div><b>Меньше анимаций</b><small>Спокойный интерфейс без движения</small></div><button class="switch ${db.settings.reducedMotion?'on':''}" data-setting="reducedMotion" role="switch" aria-checked="${Boolean(db.settings.reducedMotion)}" aria-label="Меньше анимаций"></button></div>
   <div class="settings-row"><div><b>Всё хранится на вашем ПК</b><small>Музыка копируется в библиотеку приложения.<br>Аккаунт и интернет для прослушивания не нужны.</small></div>${icon('folder')}</div>
   <div class="settings-section-title">Резервная копия</div><p class="backup-note">Папка с музыкой, обложками, плейлистами и настройками. Сохраните её на другом диске.</p><div class="backup-actions"><button class="secondary-button" id="createBackup">Создать копию</button><button class="secondary-button" id="restoreBackup">Восстановить</button></div>
-  <p class="settings-version">Luma 1.6.0 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
+  <p class="settings-version">Luma 1.6.1 · Сделано для вашей музыки<br>Пробел — play / pause · Ctrl K — поиск · Ctrl O — импорт<br>Ctrl → / ← — следующий / предыдущий трек</p><div class="modal-actions sticky"><button class="primary-button" data-action="modal-close">Назад к музыке</button></div>`);
   $('#crossfadeSeconds').onchange=e=>{saveSettings({crossfadeSeconds:Number(e.target.value)});prepareNext();};
   $('#createBackup').onclick=()=>performBackup(false);
   $('#restoreBackup').onclick=()=>{
