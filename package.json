@@ -11,7 +11,7 @@
     "build": "electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
-    "music-metadata": "12.2.3",
+    "music-metadata": "12.3.0",
     "yauzl": "3.4.0"
   },
   "devDependencies": {
